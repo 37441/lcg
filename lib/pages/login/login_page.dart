@@ -1,0 +1,276 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
+import '../../core/config/website_constants.dart';
+import '../../core/utils/toast.dart';
+import '../../data/repository/login_repository.dart';
+import '../../theme/ui_tokens.dart';
+
+/// 自定义表单登录页（对应 LoginDialog）
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final _repo = LoginRepository.instance;
+  final _usernameCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _captchaCtrl = TextEditingController();
+  final _answerCtrl = TextEditingController();
+
+  LoginPageData? _pageData;
+  var _loadingPage = true;
+  var _submitting = false;
+  var _selectedQuestionId = '0';
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLoginPage();
+  }
+
+  Future<void> _fetchLoginPage() async {
+    setState(() {
+      _loadingPage = true;
+      _error = null;
+    });
+    try {
+      final data = await _repo.fetchLoginPage();
+      if (!mounted) return;
+      setState(() {
+        _pageData = data;
+        _loadingPage = false;
+        _selectedQuestionId = data.questionOptions.isNotEmpty
+            ? data.questionOptions.first.id
+            : '0';
+      });
+    } catch (e) {
+      setState(() {
+        _loadingPage = false;
+        _error = '加载登录页失败，请检查网络后重试';
+      });
+    }
+  }
+
+  Future<void> _submit() async {
+    final data = _pageData;
+    if (data == null || _submitting) return;
+    final username = _usernameCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _error = '请输入用户名和密码');
+      return;
+    }
+    if (data.hasSecurityQuestion && _selectedQuestionId == '0') {
+      setState(() => _error = '请选择安全提问');
+      return;
+    }
+    if (data.hasCaptcha && _captchaCtrl.text.trim().isEmpty) {
+      setState(() => _error = '请输入验证码');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    final result = await _repo.doLogin(
+      username: username,
+      password: password,
+      questionId: _selectedQuestionId,
+      answer: _answerCtrl.text.trim(),
+      captcha: _captchaCtrl.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (result is LoginSuccess) {
+      showToast(context, '登录成功');
+      Navigator.of(context).pop(true);
+    } else if (result is LoginFailed) {
+      setState(() => _error = result.message);
+      _fetchLoginPage(); // 刷新验证码/formhash
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final data = _pageData;
+    return Scaffold(
+      appBar: AppBar(title: const Text('登录吾爱破解')),
+      body: _loadingPage
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(UiTokens.spaceM),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _usernameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: '用户名',
+                      prefixIcon: Icon(Icons.person_outline),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: UiTokens.spaceS),
+                  TextField(
+                    controller: _passwordCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: '密码',
+                      prefixIcon: Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (data != null && data.hasSecurityQuestion) ...[
+                    const SizedBox(height: UiTokens.spaceS),
+                    DropdownButtonFormField<String>(
+                      value: _selectedQuestionId,
+                      items: [
+                        for (var i = 0; i < data.questionOptions.length; i++)
+                          DropdownMenuItem(
+                            value: data.questionOptions[i].id,
+                            child: Text(data.questionOptions[i].text),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _selectedQuestionId = v ?? '0'),
+                      decoration: const InputDecoration(
+                        labelText: '安全提问',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: UiTokens.spaceS),
+                    TextField(
+                      controller: _answerCtrl,
+                      decoration: const InputDecoration(
+                        labelText: '安全提问答案',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                  if (data != null && data.hasCaptcha) ...[
+                    const SizedBox(height: UiTokens.spaceS),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _captchaCtrl,
+                            decoration: const InputDecoration(
+                              labelText: '验证码',
+                              prefixIcon: Icon(Icons.verified_user_outlined),
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: UiTokens.spaceS),
+                        InkWell(
+                          onTap: _fetchLoginPage,
+                          child: ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular(UiTokens.cornerXs),
+                            child: CachedNetworkImage(
+                              imageUrl: data.captchaUrl!,
+                              height: 48,
+                              width: 120,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) =>
+                                  const Icon(Icons.refresh),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (_error != null) ...[
+                    const SizedBox(height: UiTokens.spaceS),
+                    Text(
+                      _error!,
+                      style: TextStyle(
+                        fontSize: UiTokens.fontTag,
+                        color: scheme.error,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: UiTokens.spaceM),
+                  FilledButton(
+                    onPressed: _submitting ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(UiTokens.sizeButton),
+                    ),
+                    child: Text(_submitting ? '登录中…' : '登录'),
+                  ),
+                  const SizedBox(height: UiTokens.spaceS),
+                  TextButton(
+                    onPressed: () => _openWebLogin(),
+                    child: const Text('遇到问题？使用网页登录',
+                        style: TextStyle(color: UiTokens.textLink)),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  void _openWebLogin() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WebLoginPage(
+          onLoggedIn: () async {
+            final result = await _repo.verifyLoggedInAfterWebLogin();
+            if (result is LoginSuccess && mounted) {
+              showToast(context, '登录成功');
+              Navigator.of(context).pop(true);
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _usernameCtrl.dispose();
+    _passwordCtrl.dispose();
+    _captchaCtrl.dispose();
+    _answerCtrl.dispose();
+    super.dispose();
+  }
+}
+
+/// 网页登录兜底（对应 WebViewActivity.openLoginPage）
+class WebLoginPage extends StatefulWidget {
+  const WebLoginPage({super.key, this.onLoggedIn});
+
+  final VoidCallback? onLoggedIn;
+
+  @override
+  State<WebLoginPage> createState() => _WebLoginPageState();
+}
+
+class _WebLoginPageState extends State<WebLoginPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('网页登录')),
+      body: InAppWebView(
+        initialUrlRequest:
+            URLRequest(url: WebUri(WebsiteConstants.serverBaseUrl + WebsiteConstants.loginQuery)),
+        onLoadStop: (controller, url) async {
+          // 检测是否已跳回论坛首页（登录成功特征：页面含 div.avt 或 URL 变 index）
+          final html = await controller.evaluateJavascript(
+              source: "document.querySelectorAll('div.avt').length");
+          if (html == '1' || (html is String && html.contains('1'))) {
+            widget.onLoggedIn?.call();
+          }
+        },
+      ),
+    );
+  }
+}
