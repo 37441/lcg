@@ -12,6 +12,7 @@ import '../message/message_page.dart';
 import '../search/search_page.dart';
 import '../settings/settings_page.dart';
 import '../webview/webview_page.dart';
+import '../../widgets/floating_nav_bar.dart';
 
 /// 主框架：底部导航 4 Tab + 抽屉（对应 MainActivity）
 class MainShell extends StatefulWidget {
@@ -45,16 +46,9 @@ class _MainShellState extends State<MainShell> {
       ),
       drawer: _buildDrawer(context),
       body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: FloatingNavBar(
         currentIndex: _index,
         onTap: (i) => setState(() => _index = i),
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: '首页'),
-          BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), label: '发现'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications_outlined), label: '消息'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: '我的'),
-        ],
       ),
     );
   }

@@ -153,14 +153,16 @@ class _LoginPageState extends State<LoginPage> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: UiTokens.spaceS),
-                    TextField(
-                      controller: _answerCtrl,
-                      decoration: const InputDecoration(
-                        labelText: '安全提问答案',
-                        border: OutlineInputBorder(),
+                    // 选择「未设置请忽略」时无需填写答案
+                    if (_selectedQuestionId != '0') ...[const SizedBox(height: UiTokens.spaceS),
+                      TextField(
+                        controller: _answerCtrl,
+                        decoration: const InputDecoration(
+                          labelText: '安全提问答案',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                   if (data != null && data.hasCaptcha) ...[
                     const SizedBox(height: UiTokens.spaceS),
