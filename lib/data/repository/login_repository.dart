@@ -76,47 +76,51 @@ class LoginRepository {
     String answer = '',
     String captcha = '',
   }) async {
-    final page = await fetchLoginPage();
-    _syncFormHash(page.formHash);
-
-    final saltKey = await CookieStore.valueOf('saltkey') ?? '';
-    final form = <String, String>{
-      'username': username,
-      'password': md5Hex(md5Hex(password) + saltKey),
-      'questionid': questionId,
-      'answer': answer,
-      'formhash': page.formHash,
-      'referer': WebsiteConstants.serverBaseUrl,
-      'cookietime': '2592000',
-    };
-    if (page.hasCaptcha) {
-      form['seccodeverify'] = captcha;
-    }
-    final captchaHash = page.captchaHash;
-    if (captchaHash != null && captchaHash.isNotEmpty) {
-      form['seccodehash'] = captchaHash;
-    }
-
-    final loginUrl = _buildLoginUrl(page);
-    final resp = await _api.postForm(loginUrl, form);
-    final body = resp.data ?? '';
-    final doc = html_parser.parse(body);
-
-    if (doc.querySelector('div.avt') != null || body.contains('欢迎您回来')) {
-      return _handleSuccess();
-    }
-    final err = _extractError(doc);
-    if (err.isNotEmpty) {
-      return LoginFailed(err);
-    }
-    // 无法判定时用个人页验证
     try {
-      final info = await _requestUserInfo();
-      if (info.isValid) {
+      final page = await fetchLoginPage();
+      _syncFormHash(page.formHash);
+
+      final saltKey = await CookieStore.valueOf('saltkey') ?? '';
+      final form = <String, String>{
+        'username': username,
+        'password': md5Hex(md5Hex(password) + saltKey),
+        'questionid': questionId,
+        'answer': answer,
+        'formhash': page.formHash,
+        'referer': WebsiteConstants.serverBaseUrl,
+        'cookietime': '2592000',
+      };
+      if (page.hasCaptcha) {
+        form['seccodeverify'] = captcha;
+      }
+      final captchaHash = page.captchaHash;
+      if (captchaHash != null && captchaHash.isNotEmpty) {
+        form['seccodehash'] = captchaHash;
+      }
+
+      final loginUrl = _buildLoginUrl(page);
+      final resp = await _api.postForm(loginUrl, form);
+      final body = resp.data ?? '';
+      final doc = html_parser.parse(body);
+
+      if (doc.querySelector('div.avt') != null || body.contains('欢迎您回来')) {
         return _handleSuccess();
       }
-    } catch (_) {}
-    return const LoginFailed('登录失败，请重试');
+      final err = _extractError(doc);
+      if (err.isNotEmpty) {
+        return LoginFailed(err);
+      }
+      // 无法判定时用个人页验证
+      try {
+        final info = await _requestUserInfo();
+        if (info.isValid) {
+          return _handleSuccess();
+        }
+      } catch (_) {}
+      return const LoginFailed('登录失败，请重试');
+    } catch (e) {
+      return LoginFailed('登录失败：$e');
+    }
   }
 
   /// 网页登录兜底后：用个人页验证并回写登录态

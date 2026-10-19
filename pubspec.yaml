@@ -20,6 +20,7 @@ dependencies:
   html: ^0.15.4
   flutter_widget_from_html: ^0.15.0
   crypto: ^3.0.3
+  fast_gbk: ^1.0.0
 
   # 状态与存储
   provider: ^6.1.2

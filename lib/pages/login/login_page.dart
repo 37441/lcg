@@ -78,21 +78,30 @@ class _LoginPageState extends State<LoginPage> {
       _submitting = true;
       _error = null;
     });
-    final result = await _repo.doLogin(
-      username: username,
-      password: password,
-      questionId: _selectedQuestionId,
-      answer: _answerCtrl.text.trim(),
-      captcha: _captchaCtrl.text.trim(),
-    );
-    if (!mounted) return;
-    setState(() => _submitting = false);
-    if (result is LoginSuccess) {
-      showToast(context, '登录成功');
-      Navigator.of(context).pop(true);
-    } else if (result is LoginFailed) {
-      setState(() => _error = result.message);
-      _fetchLoginPage(); // 刷新验证码/formhash
+    try {
+      final result = await _repo.doLogin(
+        username: username,
+        password: password,
+        questionId: _selectedQuestionId,
+        answer: _answerCtrl.text.trim(),
+        captcha: _captchaCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      if (result is LoginSuccess) {
+        showToast(context, '登录成功');
+        Navigator.of(context).pop(true);
+      } else if (result is LoginFailed) {
+        setState(() => _error = result.message);
+        _fetchLoginPage(); // 刷新验证码/formhash
+      }
+    } catch (e) {
+      // 网络/解析异常不能卡死在“登录中”
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = '登录失败：$e';
+      });
     }
   }
 

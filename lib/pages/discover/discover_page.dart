@@ -25,6 +25,8 @@ class _DiscoverPageState extends State<DiscoverPage> {
       child: Column(
         children: [
           TabBar(
+            tabAlignment: TabAlignment.start,
+            labelPadding: const EdgeInsets.symmetric(horizontal: UiTokens.spaceS),
             labelColor: Theme.of(context).colorScheme.primary,
             unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
             indicatorColor: Theme.of(context).colorScheme.primary,

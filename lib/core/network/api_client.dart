@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:fast_gbk/fast_gbk.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'package:path_provider/path_provider.dart';
@@ -87,8 +90,11 @@ class ApiClient {
 
   Future<dom.Document> _get(String url) async {
     try {
-      final resp = await _dio.get<dynamic>(url);
-      final text = resp.data is String ? resp.data as String : resp.toString();
+      final resp = await _dio.get<List<int>>(
+        url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final text = _decode(resp.data ?? [], resp.headers.value('content-type'));
       return html_parser.parse(text);
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
@@ -102,22 +108,34 @@ class ApiClient {
 
   /// 裸 GET 响应字符串（对应 sendAjaxRequest，关注广播回的是 CDATA XML）
   Future<String> getRaw(String query) async {
-    final resp = await _dio.get<dynamic>(WebsiteConstants.serverBaseUrl + query);
-    return resp.data is String ? resp.data as String : resp.toString();
+    final resp = await _dio.get<List<int>>(
+      WebsiteConstants.serverBaseUrl + query,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return _decode(resp.data ?? [], resp.headers.value('content-type'));
   }
 
   /// POST 表单，返回响应（对应 sendPostRequestWithUrl）
   Future<Response<String>> postForm(String url, Map<String, String> form) async {
     try {
-      final resp = await _dio.post<String>(
+      final resp = await _dio.post<List<int>>(
         url,
         data: form,
         options: Options(
           contentType: Headers.formUrlEncodedContentType,
-          responseType: ResponseType.plain,
+          responseType: ResponseType.bytes,
         ),
       );
-      return resp;
+      return Response<String>(
+        requestOptions: resp.requestOptions,
+        data: _decode(resp.data ?? [], resp.headers.value('content-type')),
+        headers: resp.headers,
+        statusCode: resp.statusCode,
+        statusMessage: resp.statusMessage,
+        isRedirect: resp.isRedirect,
+        redirects: resp.redirects,
+        extra: resp.extra,
+      );
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
@@ -132,5 +150,24 @@ class ApiClient {
   Future<dom.Document> postFormDocument(String url, Map<String, String> form) async {
     final resp = await postForm(url, form);
     return html_parser.parse(resp.data ?? '');
+  }
+
+  /// 按响应 Content-Type 解码：52pojie 为 GBK，百度站内为 UTF-8
+  String _decode(List<int> bytes, String? contentType) {
+    final lower = (contentType ?? '').toLowerCase();
+    if (lower.contains('utf-8') || lower.contains('json')) {
+      try {
+        return utf8.decode(bytes);
+      } catch (_) {}
+    }
+    try {
+      return gbk.decode(bytes);
+    } catch (_) {
+      try {
+        return utf8.decode(bytes);
+      } catch (_) {
+        return String.fromCharCodes(bytes);
+      }
+    }
   }
 }
