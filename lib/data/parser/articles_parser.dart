@@ -336,17 +336,25 @@ class ArticlesParser {
     return list;
   }
 
+  /// 对应原生 extractFrom：在 element 的全部 selector1 匹配后代中找 selector2
   static String? _extract(dom.Element element, String selector1, String selector2) {
-    final list = element.querySelectorAll(selector1);
-    if (list.isEmpty) return null;
-    return list.first.querySelector(selector2)?.text;
+    for (final el in element.querySelectorAll(selector1)) {
+      final t = el.querySelector(selector2);
+      if (t != null) return t.text;
+    }
+    return null;
   }
 
   static String? _extractAttr(
       dom.Element element, String attr, String selector1, String selector2) {
-    final list = element.querySelectorAll(selector1);
-    if (list.isEmpty) return null;
-    return list.first.querySelector(selector2)?.attributes[attr];
+    for (final el in element.querySelectorAll(selector1)) {
+      final t = el.querySelector(selector2);
+      if (t != null) {
+        final v = t.attributes[attr];
+        if (v != null && v.isNotEmpty) return v;
+      }
+    }
+    return null;
   }
 
   static void _removeNode(dom.Node node) {

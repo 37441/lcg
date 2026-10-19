@@ -62,15 +62,18 @@ class _LoginPageState extends State<LoginPage> {
     if (data == null || _submitting) return;
     final username = _usernameCtrl.text.trim();
     final password = _passwordCtrl.text;
+    final answer = _answerCtrl.text.trim();
+    final captcha = _captchaCtrl.text.trim();
     if (username.isEmpty || password.isEmpty) {
       setState(() => _error = '请输入用户名和密码');
       return;
     }
-    if (data.hasSecurityQuestion && _selectedQuestionId == '0') {
-      setState(() => _error = '请选择安全提问');
+    // 选了具体安全提问才需要答案；「未设置请忽略」(id=0) 是合法选项
+    if (data.hasSecurityQuestion && _selectedQuestionId != '0' && answer.isEmpty) {
+      setState(() => _error = '请输入安全提问答案');
       return;
     }
-    if (data.hasCaptcha && _captchaCtrl.text.trim().isEmpty) {
+    if (data.hasCaptcha && captcha.isEmpty) {
       setState(() => _error = '请输入验证码');
       return;
     }
@@ -83,8 +86,8 @@ class _LoginPageState extends State<LoginPage> {
         username: username,
         password: password,
         questionId: _selectedQuestionId,
-        answer: _answerCtrl.text.trim(),
-        captcha: _captchaCtrl.text.trim(),
+        answer: answer,
+        captcha: captcha,
       );
       if (!mounted) return;
       setState(() => _submitting = false);

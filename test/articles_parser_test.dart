@@ -4,6 +4,21 @@ import 'package:lcg/data/parser/doc_parser.dart';
 
 void main() {
   group('ArticlesParser', () {
+    test('多个 td.by 时正确取作者（guide 页：首个 td.by 是板块来源）', () {
+      const html = '''
+<table><tbody id="normal_1"><tr>
+<td class="num"><a class="xi2">12</a><em>345</em></td>
+<th class="common"><a class="xst" href="thread-1-1-1.html">测试标题</a></th>
+<td class="by"><a target="_blank">『精品软件区』</a></td>
+<td class="by"><a href="space-uid-9.html" target="_blank">作者甲</a><span>2020-01-01 00:00</span></td>
+</tr></tbody></table>''';
+      final page = ArticlesParser.parseForumPage(html);
+      expect(page.articles.length, 1);
+      expect(page.articles.first.title, '测试标题');
+      expect(page.articles.first.author, '作者甲');
+      expect(page.articles.first.origin, '『精品软件区』');
+    });
+
     test('解析首页文章列表（tbody[id^=normal]）', () {
       const html = '''
 <html><body>
