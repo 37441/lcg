@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/ui_tokens.dart';
 import '../../widgets/floating_nav_bar.dart';
 import '../discover/discover_page.dart';
 import '../home/home_page.dart';
@@ -7,7 +8,7 @@ import '../me/me_page.dart';
 import '../message/message_page.dart';
 import '../search/search_page.dart';
 
-/// 主框架：底部导航 4 Tab（PageView 丝滑切换 + 页面状态保活）
+/// 主框架：紧凑顶栏 + 底部胶囊导航（PageView 平滑切换 + 页面状态保活）
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -44,25 +45,63 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('吾爱破解'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SearchPage()),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // 紧凑顶栏（取代 AppBar，减小顶部占位）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(UiTokens.spaceM, 6, UiTokens.spaceXs, 2),
+              child: Row(
+                children: [
+                  Text(
+                    '吾爱破解',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? const Color(0xFFE6E6E6) : UiTokens.textDark,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: UiTokens.mintGreenLight,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      '52pojie.cn',
+                      style: TextStyle(fontSize: 11, color: UiTokens.mintGreen),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    iconSize: 22,
+                    icon: Icon(Icons.search,
+                        color: isDark ? const Color(0xFFE6E6E6) : UiTokens.textDark),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SearchPage()),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-      body: PageView(
-        controller: _controller,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          for (final page in _pages) _KeepAlivePage(child: page),
-        ],
+            Expanded(
+              child: PageView(
+                controller: _controller,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  for (final page in _pages) _KeepAlivePage(child: page),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: FloatingNavBar(
         currentIndex: _index,

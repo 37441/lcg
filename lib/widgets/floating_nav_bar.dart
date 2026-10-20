@@ -42,8 +42,7 @@ class FloatingNavBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                   onTap: () => onTap(i),
                   child: Center(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
+                    child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
                         color: currentIndex == i

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/models/article.dart';
 import '../theme/ui_tokens.dart';
 
-/// 文章卡片 —— 纯白大圆角卡片 + 浅色胶囊标签/数据按钮
+/// 文章卡片 —— 参考图布局：标题 + 作者/板块胶囊/时间 + 底部三等宽胶囊数据
 class ArticleCard extends StatelessWidget {
   const ArticleCard({super.key, required this.article, this.onTap});
 
@@ -24,48 +24,101 @@ class ArticleCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 标题
+              Text(
+                article.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: UiTokens.fontBody,
+                  fontWeight: FontWeight.bold,
+                  color: textDark,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 10),
+              // 作者 + 板块胶囊 + 时间
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFF0F0F0),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.person, size: 14, color: textGray),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
                     child: Text(
-                      article.title,
-                      maxLines: 2,
+                      article.author,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: UiTokens.fontBody,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                         color: textDark,
-                        height: 1.4,
                       ),
                     ),
                   ),
-                  if (article.isRecommended) ...[
-                    const SizedBox(width: UiTokens.spaceS),
-                    const _Pill(text: '推荐', bg: UiTokens.mintGreenLight, fg: UiTokens.mintGreen),
-                  ],
-                  if (article.helpCoin != 0) ...[
-                    const SizedBox(width: UiTokens.spaceS),
-                    _Pill(
-                      text: article.helpCoin == -1 ? '已解决' : '悬赏${article.helpCoin}',
-                      bg: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFF0F0F0),
-                      fg: textGray,
+                  if (article.origin.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: UiTokens.mintGreenLight,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          article.origin,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11, color: UiTokens.mintGreen),
+                        ),
+                      ),
                     ),
                   ],
+                  if (article.isRecommended) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F0F0),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '推荐',
+                        style: TextStyle(fontSize: 11, color: textGray),
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  if (article.helpCoin != 0)
+                    Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F0F0),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        article.helpCoin == -1 ? '已解决' : '悬赏',
+                        style: TextStyle(fontSize: 11, color: textGray),
+                      ),
+                    ),
                 ],
               ),
-              const SizedBox(height: UiTokens.spaceM),
-              // 底部数据栏：浅灰胶囊按钮
-              Wrap(
-                spacing: UiTokens.spaceS,
-                runSpacing: UiTokens.spaceXs,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              const SizedBox(height: 10),
+              // 底部三等宽胶囊数据按钮
+              Row(
                 children: [
-                  _StatPill(text: '回复 ${article.reply}', dark: isDark),
-                  _StatPill(text: '查看 ${article.view}', dark: isDark),
-                  if (article.origin.isNotEmpty)
-                    _StatPill(text: article.origin, dark: isDark),
-                  _StatPill(text: article.author, dark: isDark),
+                  Expanded(child: _StatPill(icon: Icons.chat_bubble_outline, text: '回复 ${article.reply}', dark: isDark)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _StatPill(icon: Icons.visibility_outlined, text: '查看 ${article.view}', dark: isDark)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _StatPill(icon: Icons.thumb_up_outlined, text: article.date, dark: isDark)),
                 ],
               ),
             ],
@@ -76,48 +129,38 @@ class ArticleCard extends StatelessWidget {
   }
 }
 
-/// 浅色胶囊标签
-class _Pill extends StatelessWidget {
-  const _Pill({required this.text, required this.bg, required this.fg});
-
-  final String text;
-  final Color bg;
-  final Color fg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(text, style: TextStyle(fontSize: 11, color: fg)),
-    );
-  }
-}
-
-/// 浅灰胶囊数据按钮
+/// 浅灰胶囊数据按钮（图标 + 文字）
 class _StatPill extends StatelessWidget {
-  const _StatPill({required this.text, required this.dark});
+  const _StatPill({required this.icon, required this.text, required this.dark});
 
+  final IconData icon;
   final String text;
   final bool dark;
 
   @override
   Widget build(BuildContext context) {
+    final gray = dark ? const Color(0xFF9E9E9E) : UiTokens.textGray;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: dark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(17),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          color: dark ? const Color(0xFF9E9E9E) : UiTokens.textGray,
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 14, color: gray),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: gray),
+            ),
+          ),
+        ],
       ),
     );
   }
