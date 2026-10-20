@@ -1,16 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Cookie;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' hide Cookie;
 
+import '../../core/account/user_data_repo.dart';
 import '../../core/config/website_constants.dart';
 import '../../core/network/cookie_store.dart';
 import '../../data/repository/login_repository.dart';
 
 /// 内嵌网页登录（52pojie 的验证码是「点击验证」人机验证，需在网页内完成）
 /// - 传入账号密码时自动填充表单，用户只需点击验证并登录
-/// - 任意页面加载后自动同步 Cookie 到原生池并用个人页校验登录态
+/// - 通过 Discuz 的 *_auth cookie 判定登录成功（不依赖页面跳转），成功后同步 Cookie 并自动返回
 class WebLoginPage extends StatefulWidget {
   const WebLoginPage({
     super.key,
@@ -32,6 +34,20 @@ class WebLoginPage extends StatefulWidget {
 class _WebLoginPageState extends State<WebLoginPage> {
   var _checking = false;
   var _done = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // 轮询检测：即使页面未触发 onLoadStop（AJAX 登录）也能识别登录成功
+    _timer = Timer.periodic(const Duration(seconds: 2), (_) => _checkLogin());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _fillForm(InAppWebViewController controller, Uri? url) async {
     if (widget.username == null || widget.password == null) return;
@@ -55,14 +71,16 @@ class _WebLoginPageState extends State<WebLoginPage> {
     } catch (_) {}
   }
 
-  /// 同步 WebView Cookie → 原生 cookie 池，并用个人页校验登录态
+  /// 同步 WebView Cookie → 原生 cookie 池；用 *_auth cookie 判定登录成功
   Future<void> _checkLogin() async {
     if (_checking || _done) return;
     _checking = true;
     try {
-      final cookies =
-          await CookieManager.instance().getCookies(url: WebUri(WebsiteConstants.serverBaseUrl));
+      final cookies = await CookieManager.instance()
+          .getCookies(url: WebUri(WebsiteConstants.serverBaseUrl));
       if (cookies.isEmpty) return;
+      final hasAuth = cookies.any((c) => c.name.endsWith('_auth') && c.value.isNotEmpty);
+      if (!hasAuth) return;
       final jarCookies = <Cookie>[
         for (final c in cookies)
           Cookie(c.name, c.value)
@@ -73,11 +91,11 @@ class _WebLoginPageState extends State<WebLoginPage> {
         Uri.parse(WebsiteConstants.serverBaseUrl),
         jarCookies,
       );
-      final result = await LoginRepository.instance.verifyLoggedInAfterWebLogin();
-      if (result is LoginSuccess && mounted) {
-        _done = true;
-        Navigator.of(context).pop(true);
-      }
+      _done = true;
+      // 先落登录态，用户信息异步刷新（失败也不影响登录）
+      UserDataRepo.setLoggedIn(true);
+      unawaited(LoginRepository.instance.verifyLoggedInAfterWebLogin());
+      if (mounted) Navigator.of(context).pop(true);
     } catch (_) {
     } finally {
       _checking = false;

@@ -12,14 +12,21 @@ Future<void> main() async {
   await ApiClient.instance.init();
   await AppConfig.init();
   await UserDataRepo.init();
-  _trySignInOnLaunch();
+  _autoSignInIfNeeded();
   runApp(const LcgApp());
 }
 
-/// 启动后延迟补签（对应原生 LCGApp.trySignIn）
-void _trySignInOnLaunch() {
-  if (!AccountManager.instance.isLoggedIn) return;
-  Future.delayed(const Duration(seconds: 2), () {
-    SignInService.instance.trySignIn();
+/// 每天第一次打开自动签到（对应原生 SignInWorker，成功后记录日期避免重复）
+void _autoSignInIfNeeded() {
+  if (!AccountManager.instance.isLoggedIn || !AppConfig.autoSignEnable) return;
+  final now = DateTime.now();
+  final today =
+      '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  if (AppConfig.lastSignInDate == today) return;
+  Future.delayed(const Duration(seconds: 2), () async {
+    final ok = await SignInService.instance.trySignIn();
+    if (ok) {
+      AppConfig.lastSignInDate = today;
+    }
   });
 }

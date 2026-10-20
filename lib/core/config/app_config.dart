@@ -11,6 +11,7 @@ class AppConfig {
   static const _defaultSearchEngine = 'default_search_engine';
   static const _autoSignIn = 'auto_sign_in';
   static const _syncFavorites = 'sync_favorites';
+  static const _lastSignInDate = 'last_sign_in_date';
 
   static const searchEngineBaidu = 1;
   static const searchEngineWuai = 0;
@@ -57,4 +58,9 @@ class AppConfig {
   static bool get syncFavorites => _prefs?.getBool(_syncFavorites) ?? true;
 
   static set syncFavorites(bool value) => _prefs?.setBool(_syncFavorites, value);
+
+  /// 上次自动签到日期（yyyy-MM-dd），用于每天只签一次
+  static String get lastSignInDate => _prefs?.getString(_lastSignInDate) ?? '';
+
+  static set lastSignInDate(String value) => _prefs?.setString(_lastSignInDate, value);
 }

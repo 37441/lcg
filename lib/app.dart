@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'core/account/account_manager.dart';
 import 'pages/article/article_page.dart';
-import 'pages/main/main_shell.dart';
+import 'pages/splash/splash_page.dart';
 import 'theme/app_theme.dart';
 
 class LcgApp extends StatelessWidget {
@@ -29,7 +29,7 @@ class LcgApp extends StatelessWidget {
           }
           return null;
         },
-        home: const MainShell(),
+        home: const SplashPage(),
       ),
     );
   }
