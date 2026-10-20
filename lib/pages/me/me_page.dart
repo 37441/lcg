@@ -90,6 +90,10 @@ class _UserCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(UiTokens.cornerS),
                     child: CachedNetworkImage(
                       imageUrl: info.avatarUrl!,
+                      httpHeaders: const {
+                        'Referer': WebsiteConstants.serverBaseUrl,
+                        'User-Agent': WebsiteConstants.desktopUserAgent,
+                      },
                       width: UiTokens.sizeAvatarLarge,
                       height: UiTokens.sizeAvatarLarge,
                       fit: BoxFit.cover,

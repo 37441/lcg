@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/config/website_constants.dart';
 import '../../data/repository/message_repository.dart';
 import '../../theme/ui_tokens.dart';
 import '../../widgets/common_views.dart';
@@ -57,6 +58,10 @@ class _MessagePageState extends State<MessagePage> {
                       borderRadius: BorderRadius.circular(UiTokens.cornerS),
                       child: CachedNetworkImage(
                         imageUrl: item.avatar,
+                        httpHeaders: const {
+                          'Referer': WebsiteConstants.serverBaseUrl,
+                          'User-Agent': WebsiteConstants.desktopUserAgent,
+                        },
                         width: 36,
                         height: 36,
                         fit: BoxFit.cover,

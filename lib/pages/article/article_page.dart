@@ -1,7 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/account/account_manager.dart';
+import '../../core/config/website_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/waf_silent_solver.dart';
 import '../../core/utils/toast.dart';
@@ -279,6 +281,10 @@ class _PostCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(UiTokens.cornerS),
                     child: CachedNetworkImage(
                       imageUrl: post.avatar,
+                      httpHeaders: const {
+                        'Referer': WebsiteConstants.serverBaseUrl,
+                        'User-Agent': WebsiteConstants.desktopUserAgent,
+                      },
                       width: UiTokens.sizeAvatar,
                       height: UiTokens.sizeAvatar,
                       fit: BoxFit.cover,
@@ -308,6 +314,16 @@ class _PostCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                IconButton(
+                  tooltip: '复制本楼内容',
+                  icon: Icon(Icons.copy_outlined,
+                      size: 18, color: scheme.onSurfaceVariant),
+                  onPressed: () async {
+                    final text = _htmlToText(post.content);
+                    await Clipboard.setData(ClipboardData(text: text));
+                    if (context.mounted) showToast(context, '已复制本楼内容');
+                  },
+                ),
               ],
             ),
             const SizedBox(height: UiTokens.spaceS),
@@ -319,4 +335,20 @@ class _PostCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// HTML 转纯文本（用于复制帖子内容）
+String _htmlToText(String html) {
+  return html
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'</p>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'<[^>]+>'), '')
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+      .trim();
 }

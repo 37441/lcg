@@ -1,9 +1,17 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../core/config/website_constants.dart';
+import '../core/utils/toast.dart';
+import '../pages/webview/webview_page.dart';
 import '../theme/ui_tokens.dart';
 
 /// 帖子内容 HTML 渲染（对应原生 HtmlTextView + ClickablePreCodeSpan）
+/// - 图片自动带 Referer 请求头（绕过 52pojie 防盗链）
+/// - 链接点击弹出「应用内打开 / 浏览器打开 / 复制链接」选择
 class HtmlView extends StatelessWidget {
   const HtmlView({super.key, required this.html, this.padding = EdgeInsets.zero});
 
@@ -21,9 +29,76 @@ class HtmlView extends StatelessWidget {
           height: 1.6,
           color: Theme.of(context).colorScheme.onSurface,
         ),
+        factoryBuilder: () => _RefererFactory(),
+        onTapUrl: (url) => _handleUrlTap(context, url),
       ),
     );
   }
+}
+
+/// 图片加载工厂：给网络图片加 Referer/UA，避免 52pojie 图片防盗链显示叉号
+class _RefererFactory extends WidgetFactory {
+  @override
+  ImageProvider? imageProviderFromNetwork(String url) {
+    if (url.isEmpty) return null;
+    return CachedNetworkImageProvider(
+      url,
+      headers: const {
+        'Referer': WebsiteConstants.serverBaseUrl,
+        'User-Agent': WebsiteConstants.desktopUserAgent,
+      },
+    );
+  }
+}
+
+/// 链接点击：弹出跳转方式选择
+Future<bool> _handleUrlTap(BuildContext context, String url) async {
+  if (url.isEmpty || url.startsWith('#') || url.startsWith('javascript')) {
+    return false;
+  }
+  final choice = await showDialog<int>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: const Text('打开链接'),
+      children: [
+        SimpleDialogOption(
+          onPressed: () => Navigator.pop(ctx, 1),
+          child: const Text('在应用内打开'),
+        ),
+        SimpleDialogOption(
+          onPressed: () => Navigator.pop(ctx, 2),
+          child: const Text('使用浏览器打开'),
+        ),
+        SimpleDialogOption(
+          onPressed: () => Navigator.pop(ctx, 3),
+          child: const Text('复制链接'),
+        ),
+        SimpleDialogOption(
+          onPressed: () => Navigator.pop(ctx, 0),
+          child: const Text('取消'),
+        ),
+      ],
+    ),
+  );
+  if (!context.mounted) return true;
+  switch (choice) {
+    case 1:
+      WebViewPage.open(context, url);
+      break;
+    case 2:
+      final uri = Uri.tryParse(url);
+      if (uri == null) {
+        showToast(context, '无效链接');
+      } else {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      break;
+    case 3:
+      await Clipboard.setData(ClipboardData(text: url));
+      if (context.mounted) showToast(context, '链接已复制');
+      break;
+  }
+  return true;
 }
 
 /// 通用加载/空态/错误态

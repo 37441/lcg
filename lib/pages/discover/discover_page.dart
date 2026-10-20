@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/repository/articles_repository.dart';
 import '../../theme/ui_tokens.dart';
 import '../../widgets/article_list_view.dart';
 import 'rank_page.dart';
@@ -23,6 +24,21 @@ class _Section {
 }
 
 class _DiscoverPageState extends State<DiscoverPage> {
+  final _repo = ArticlesRepository.instance;
+  Map<int, int> _counts = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCounts();
+  }
+
+  Future<void> _loadCounts() async {
+    final counts = await _repo.fetchSectionCounts();
+    if (!mounted) return;
+    setState(() => _counts = counts);
+  }
+
   static const _sections = <_Section>[
     _Section('原创发布区', 2, Icons.edit_outlined, Color(0xFF10B981)),
     _Section('精品软件区', 16, Icons.apps, Color(0xFF60A5FA)),
@@ -64,7 +80,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
                 IconButton(
                   key: _refreshKey,
                   icon: const Icon(Icons.refresh, color: UiTokens.textGray),
-                  onPressed: () => setState(() {}),
+                  onPressed: _loadCounts,
                 ),
               ],
             ),
@@ -147,7 +163,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
                                     ),
                                   ),
                                 ),
-                                _TodayPill(count: 0),
+                                _CountPill(count: _counts[s.fid]),
                                 const SizedBox(width: 8),
                                 const Icon(Icons.chevron_right,
                                     size: 18, color: Color(0xFFBBBBBB)),
@@ -221,15 +237,15 @@ class _DiscoverPageState extends State<DiscoverPage> {
   }
 }
 
-/// 「今日 XX」胶囊：0 灰底灰字，>0 绿底绿字
-class _TodayPill extends StatelessWidget {
-  const _TodayPill({required this.count});
+/// 板块数据胶囊：加载中显示 -，有数据显示真实主题数（>0 绿底绿字）
+class _CountPill extends StatelessWidget {
+  const _CountPill({required this.count});
 
-  final int count;
+  final int? count;
 
   @override
   Widget build(BuildContext context) {
-    final active = count > 0;
+    final active = (count ?? 0) > 0;
     return Container(
       height: 22,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -239,7 +255,7 @@ class _TodayPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(11),
       ),
       child: Text(
-        '今日 $count',
+        count == null ? '-' : '$count',
         style: TextStyle(
           fontSize: 11,
           color: active ? UiTokens.mintGreen : UiTokens.textGray,
