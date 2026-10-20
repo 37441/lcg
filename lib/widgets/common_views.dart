@@ -2,9 +2,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/config/website_constants.dart';
+import '../core/network/cookie_store.dart';
 import '../core/utils/toast.dart';
 import '../pages/webview/webview_page.dart';
 import '../theme/ui_tokens.dart';
@@ -22,10 +24,12 @@ class HtmlView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: padding,
-      // 长按可选择文字复制
+      // 长按可选择文字复制（自定义 5 项中文菜单）
       child: SelectionArea(
+        contextMenuBuilder: _buildSelectionMenu,
         child: HtmlWidget(
           html,
+          baseUrl: Uri.parse(WebsiteConstants.serverBaseUrl),
           textStyle: TextStyle(
             fontSize: UiTokens.fontBody,
             height: 1.6,
@@ -39,18 +43,92 @@ class HtmlView extends StatelessWidget {
   }
 }
 
-/// 图片加载工厂：给网络图片加 Referer/UA，避免 52pojie 图片防盗链显示叉号
+/// 选区菜单：复制 / 全选 / 分享 / 浏览器打开 / 问问 DeepSeek
+Widget _buildSelectionMenu(BuildContext context, SelectableRegionState state) {
+  /// 获取选中文字：先复制到剪贴板再读取（兼容当前 Flutter 版本）
+  Future<String> selectedText() async {
+    // ignore: deprecated_member_use
+    state.copySelection(SelectionChangedCause.toolbar);
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    return data?.text?.trim() ?? '';
+  }
+
+  return AdaptiveTextSelectionToolbar.buttonItems(
+    anchors: state.contextMenuAnchors,
+    buttonItems: [
+      ContextMenuButtonItem(
+        label: '复制',
+        onPressed: () {
+          // ignore: deprecated_member_use
+          state.copySelection(SelectionChangedCause.toolbar);
+          ContextMenuController.removeAny();
+        },
+      ),
+      ContextMenuButtonItem(
+        label: '全选',
+        onPressed: () {
+          state.selectAll(SelectionChangedCause.toolbar);
+          ContextMenuController.removeAny();
+        },
+      ),
+      ContextMenuButtonItem(
+        label: '分享',
+        onPressed: () async {
+          final text = await selectedText();
+          ContextMenuController.removeAny();
+          if (text.isNotEmpty) {
+            await SharePlus.instance.share(ShareParams(text: text));
+          }
+        },
+      ),
+      ContextMenuButtonItem(
+        label: '浏览器打开',
+        onPressed: () async {
+          final text = await selectedText();
+          ContextMenuController.removeAny();
+          if (text.isEmpty) return;
+          final uri = Uri.tryParse(text);
+          final target = (uri != null &&
+                  (uri.scheme == 'http' || uri.scheme == 'https'))
+              ? uri
+              : Uri.parse(
+                  'https://www.baidu.com/s?wd=${Uri.encodeComponent(text)}');
+          await launchUrl(target, mode: LaunchMode.externalApplication);
+        },
+      ),
+      ContextMenuButtonItem(
+        label: '问问DeepSeek',
+        onPressed: () async {
+          final text = await selectedText();
+          ContextMenuController.removeAny();
+          if (text.isNotEmpty) {
+            await Clipboard.setData(ClipboardData(text: text));
+            if (context.mounted) {
+              showToast(context, '已复制选中文字，可在 DeepSeek 中粘贴提问');
+            }
+          }
+          await launchUrl(Uri.parse('https://chat.deepseek.com/'),
+              mode: LaunchMode.externalApplication);
+        },
+      ),
+    ],
+  );
+}
+
+/// 图片加载工厂：给网络图片加 Referer/UA/Cookie，避免 52pojie 图片防盗链显示叉号
 class _RefererFactory extends WidgetFactory {
   @override
   ImageProvider? imageProviderFromNetwork(String url) {
     if (url.isEmpty) return null;
-    return CachedNetworkImageProvider(
-      url,
-      headers: const {
-        'Referer': WebsiteConstants.serverBaseUrl,
-        'User-Agent': WebsiteConstants.desktopUserAgent,
-      },
-    );
+    final headers = <String, String>{
+      'Referer': WebsiteConstants.serverBaseUrl,
+      'User-Agent': WebsiteConstants.desktopUserAgent,
+    };
+    final cookie = CookieStore.webCookieHeader;
+    if (cookie != null && cookie.isNotEmpty) {
+      headers['Cookie'] = cookie;
+    }
+    return CachedNetworkImageProvider(url, headers: headers);
   }
 }
 
