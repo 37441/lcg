@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:fast_gbk/fast_gbk.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/utils/app_log.dart';
 import '../../pages/webview/waf_challenge_page.dart';
 
 /// 全局 Navigator key：WAF 拦截器需要用它在任意请求命中挑战时弹出验证页
@@ -48,6 +49,7 @@ class WafDioInterceptor extends InterceptorsWrapper {
         text = ct.contains('utf-8') ? utf8.decode(data) : gbk.decode(data);
       } catch (_) {}
       if (text != null && isWafChallenge(text)) {
+        logD('waf', '检测到挑战页: ${response.requestOptions.uri}');
         unawaited(_solveAndResubmit(response.requestOptions, handler));
         return;
       }
@@ -63,8 +65,10 @@ class WafDioInterceptor extends InterceptorsWrapper {
     try {
       await _ensureSolved();
       final res = await _dio.fetch(options);
+      logD('waf', '验证通过，重发 ${options.uri} -> ${res.statusCode}');
       handler.next(res);
     } catch (e, st) {
+      logD('waf', '验证/重发失败: $e');
       handler.reject(
         DioException(
           requestOptions: options,
@@ -96,6 +100,7 @@ class WafDioInterceptor extends InterceptorsWrapper {
       throw StateError('页面尚未就绪，无法执行安全验证');
     }
     final ok = await WafChallengePage.ensure(context, '${baseUrl}forum.php');
+    logD('waf', 'WebView 验证结果: $ok');
     if (!ok) {
       throw StateError('安全验证未通过');
     }

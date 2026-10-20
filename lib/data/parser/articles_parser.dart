@@ -99,35 +99,47 @@ class ArticlesParser {
     return list;
   }
 
-  /// 板块文章页（ForumArticles）：列表 + 需要登录时抛 LoginRequiredException
+  /// 板块文章页（导读页用 normal_*，版块页用 normalthread_*/stickthread_*）
   static ForumPage parseForumPage(String html) {
     final doc = html_parser.parse(html);
-    var rows = doc.querySelectorAll('tbody[id^="normal"]');
+    final pageTitle = doc.querySelector('title')?.text ?? '';
+    var rows = doc.querySelectorAll(
+        'tbody[id^="normal"], tbody[id^="normalthread"], tbody[id^="stickthread"]');
+    if (rows.isEmpty) {
+      // 兜底：任意含帖子标题链接 a.xst 的表格行（兼容版块页其他结构）
+      rows = doc
+          .querySelectorAll('tr')
+          .where((tr) => tr.querySelector('a.xst') != null)
+          .toList();
+    }
     if (rows.isEmpty) {
       if (doc.getElementById('messagelogin') != null) {
         throw LoginRequiredException();
       }
-      return ForumPage(articles: []);
+      return ForumPage(articles: [], pageTitle: pageTitle);
     }
 
     final articles = <Article>[];
     for (final element in rows) {
       try {
-        final reply = int.parse(_extract(element, 'td.num', 'a.xi2') ?? '0');
-        final view = int.parse(_extract(element, 'td.num', 'em') ?? '0');
-        final title = _extract(element, 'th.new', '.xst') ?? '';
-        final finalTitle =
-            title.isNotEmpty ? title : (_extract(element, 'th.common', '.xst') ?? '');
+        final reply = int.tryParse(_extract(element, 'td.num', 'a.xi2') ?? '') ?? 0;
+        final view = int.tryParse(_extract(element, 'td.num', 'em') ?? '') ?? 0;
+        var title = _extract(element, 'th.new', '.xst') ?? '';
+        if (title.isEmpty) title = _extract(element, 'th.common', '.xst') ?? '';
+        if (title.isEmpty) title = element.querySelector('a.xst')?.text ?? '';
         final author = _extract(element, 'td.by', 'a[href*="uid"]') ?? '';
         final date = _extract(element, 'td.by', 'span') ?? '';
         var url = _extractAttr(element, 'href', 'th.new', 'a.xst') ?? '';
         if (url.isEmpty) {
           url = _extractAttr(element, 'href', 'th.common', 'a.xst') ?? '';
         }
+        if (url.isEmpty) {
+          url = element.querySelector('a.xst')?.attributes['href'] ?? '';
+        }
         final origin = _extract(element, 'td.by', 'a[target]') ?? '';
-        if (finalTitle.isNotEmpty && author.isNotEmpty) {
+        if (title.isNotEmpty) {
           articles.add(Article(
-            title: finalTitle,
+            title: title,
             author: author,
             date: date,
             url: url,
@@ -156,7 +168,7 @@ class ArticlesParser {
         } catch (_) {}
       }
     }
-    return ForumPage(articles: articles, threads: threads);
+    return ForumPage(articles: articles, threads: threads, pageTitle: pageTitle);
   }
 
   /// 文章详情（对应 getArticleDetail）

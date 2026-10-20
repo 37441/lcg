@@ -83,10 +83,13 @@ class PreviewPost {
 }
 
 class ForumPage {
-  ForumPage({required this.articles, this.threads = const []});
+  ForumPage({required this.articles, this.threads = const [], this.pageTitle = ''});
 
   final List<Article> articles;
   final List<ForumThread> threads;
+
+  /// 页面 title（调试用：空列表时展示，便于定位解析/验证问题）
+  final String pageTitle;
 }
 
 class ForumThread {

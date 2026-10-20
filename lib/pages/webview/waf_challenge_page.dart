@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart' hide Cookie;
 import '../../core/config/website_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/cookie_store.dart';
+import '../../core/utils/app_log.dart';
 
 /// 阿里云 WAF JS 挑战执行页（参考 MT 客户端已验证方案）
 /// 全屏加载论坛首页让 WebView 跑完混淆 JS，页面变为真实内容后收割 cookie 并自动关闭。
@@ -58,9 +59,13 @@ class _WafChallengePageState extends State<WafChallengePage> {
         source: 'document.documentElement.innerHTML',
       );
       if (html is String && isWafChallenge(html)) {
+        logD('waf', '挑战页仍在（等待 JS 刷新）');
         return; // 仍在挑战页，等待下一次加载
       }
-    } catch (_) {}
+      logD('waf', '挑战页已通过，页面内容长度=${(html as String?)?.length}');
+    } catch (e) {
+      logD('waf', 'JS 检测异常: $e');
+    }
     await _collectCookies();
     _finish(true);
   }
@@ -92,7 +97,10 @@ class _WafChallengePageState extends State<WafChallengePage> {
           .map((c) => '${c.name}=${c.value}')
           .join('; ');
       if (header.isNotEmpty) await CookieStore.setWebCookieHeader(header);
-    } catch (_) {}
+      logD('waf', '已收割 cookie ${cookies.length} 个（含验证 cookie）');
+    } catch (e) {
+      logD('waf', '收割 cookie 失败: $e');
+    }
   }
 
   void _finish(bool ok) {

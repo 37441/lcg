@@ -2,6 +2,7 @@ import 'package:html/dom.dart' as dom;
 
 import '../../core/config/website_constants.dart';
 import '../../core/network/api_client.dart';
+import '../../core/utils/app_log.dart';
 import '../db/app_database.dart';
 import '../models/article.dart';
 import '../parser/articles_parser.dart';
@@ -36,7 +37,10 @@ class ArticlesRepository {
   /// 板块文章 + 帖子分类 Thread（对应 processForumArticlesDocument）
   Future<ForumPage> fetchForumPage(String query) async {
     final doc = await _getDoc(query);
-    return ArticlesParser.parseForumPage(doc.documentElement!.outerHtml);
+    final page = ArticlesParser.parseForumPage(doc.documentElement!.outerHtml);
+    logD('parse',
+        '$query -> articles=${page.articles.length} threads=${page.threads.length} title=${page.pageTitle}');
+    return page;
   }
 
   /// 文章详情

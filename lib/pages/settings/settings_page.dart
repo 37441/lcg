@@ -8,6 +8,7 @@ import '../../core/config/theme_controller.dart';
 import '../../core/network/cookie_store.dart';
 import '../../core/utils/toast.dart';
 import '../login/login_page.dart';
+import 'diagnostics_page.dart';
 
 /// 设置页（对应 SettingActivity）
 class SettingsPage extends StatefulWidget {
@@ -143,6 +144,15 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: const Icon(Icons.info_outline),
             title: const Text('版本'),
             trailing: const Text('1.9.2'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: const Text('诊断日志'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DiagnosticsPage()),
+            ),
           ),
         ],
       ),

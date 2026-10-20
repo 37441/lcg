@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/network/api_client.dart';
 import '../data/models/article.dart';
 import '../data/repository/articles_repository.dart';
+import '../pages/settings/diagnostics_page.dart';
 import '../pages/webview/waf_challenge_page.dart';
 import 'article_card.dart';
 import 'common_views.dart';
@@ -28,6 +29,7 @@ class _ArticleListViewState extends State<ArticleListView> {
   var _error = false;
   var _hasMore = true;
   var _wafTried = false;
+  var _emptyTitle = '';
 
   @override
   void initState() {
@@ -54,10 +56,11 @@ class _ArticleListViewState extends State<ArticleListView> {
       _error = false;
     });
     try {
-      final list = await _repo.fetchForumArticles('${widget.query}&page=$_page');
+      final page = await _repo.fetchForumPage('${widget.query}&page=$_page');
       setState(() {
-        _items.addAll(list);
-        _hasMore = list.isNotEmpty;
+        _items.addAll(page.articles);
+        _hasMore = page.articles.isNotEmpty;
+        _emptyTitle = page.pageTitle;
         _loading = false;
       });
     } on WafChallengeException catch (e) {
@@ -93,10 +96,10 @@ class _ArticleListViewState extends State<ArticleListView> {
     _loadingMore = true;
     _page++;
     try {
-      final list = await _repo.fetchForumArticles('${widget.query}&page=$_page');
+      final page = await _repo.fetchForumPage('${widget.query}&page=$_page');
       setState(() {
-        _items.addAll(list);
-        _hasMore = list.isNotEmpty;
+        _items.addAll(page.articles);
+        _hasMore = page.articles.isNotEmpty;
         _loadingMore = false;
       });
     } on WafChallengeException catch (e) {
@@ -115,7 +118,31 @@ class _ArticleListViewState extends State<ArticleListView> {
   Widget build(BuildContext context) {
     if (_loading) return const LoadingView();
     if (_error) return ErrorView(onRetry: _fetch);
-    if (_items.isEmpty) return const EmptyView();
+    if (_items.isEmpty) {
+      return Column(
+        children: [
+          const Expanded(child: EmptyView(text: '目前没有内容可供展示')),
+          TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DiagnosticsPage()),
+            ),
+            child: const Text('查看诊断日志'),
+          ),
+          if (_emptyTitle.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '页面：$_emptyTitle',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+        ],
+      );
+    }
     return RefreshIndicator(
       onRefresh: () async {
         _items.clear();

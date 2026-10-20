@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'cookie_store.dart';
 import 'waf_interceptor.dart';
 import '../config/website_constants.dart';
+import '../utils/app_log.dart';
 
 /// 网络异常（对应原生 NetworkException）
 class NetworkException implements Exception {
@@ -119,8 +120,11 @@ class ApiClient {
       );
       final text = _decode(resp.data ?? [], resp.headers.value('content-type'));
       if (_isWafChallenge(text)) {
+        logD('http', 'GET $url -> ${resp.statusCode} WAF挑战页');
         throw WafChallengeException(url);
       }
+      logD('http',
+          'GET $url -> ${resp.statusCode} ${text.length}字符 waf=false');
       return html_parser.parse(text);
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
@@ -156,9 +160,11 @@ class ApiClient {
           responseType: ResponseType.bytes,
         ),
       );
+      final decoded = _decode(resp.data ?? [], resp.headers.value('content-type'));
+      logD('http', 'POST $url -> ${resp.statusCode} ${decoded.length}字符');
       return Response<String>(
         requestOptions: resp.requestOptions,
-        data: _decode(resp.data ?? [], resp.headers.value('content-type')),
+        data: decoded,
         headers: resp.headers,
         statusCode: resp.statusCode,
         statusMessage: resp.statusMessage,

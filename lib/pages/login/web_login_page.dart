@@ -9,6 +9,7 @@ import '../../core/account/user_data_repo.dart';
 import '../../core/config/website_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/cookie_store.dart';
+import '../../core/utils/app_log.dart';
 import '../../data/repository/login_repository.dart';
 
 /// 内嵌网页登录（52pojie 验证码为「点击验证」，需真实网页环境）
@@ -169,6 +170,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
         } catch (_) {}
       }
       if (!logged) return;
+      logD('login', '检测到登录成功，同步 ${cookies.length} 个 cookie');
 
       if (jarCookies.isNotEmpty) {
         try {
@@ -185,6 +187,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
       } catch (_) {}
       _done = true;
       UserDataRepo.setLoggedIn(true);
+      logD('login', '登录态已写入，自动返回');
       unawaited(LoginRepository.instance.verifyLoggedInAfterWebLogin());
       if (mounted) Navigator.of(context).pop(true);
     } catch (_) {
