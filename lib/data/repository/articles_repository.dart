@@ -64,40 +64,6 @@ class ArticlesRepository {
     return ArticlesParser.parseFirstPost(doc.documentElement!.outerHtml);
   }
 
-  /// 板块实时数据：从 forum.php 抓每个板块的「主题」数（fid -> 主题数）
-  Future<Map<int, int>> fetchSectionCounts() async {
-    final counts = <int, int>{};
-    try {
-      final doc = await _api.getWithQuery('forum.php');
-      for (final a in doc.querySelectorAll('a[href*="forum-"]')) {
-        final href = a.attributes['href'] ?? '';
-        final m = RegExp(r'forum-(\d+)-1\.html').firstMatch(href);
-        if (m == null) continue;
-        final fid = int.tryParse(m.group(1)!) ?? 0;
-        if (fid == 0 || counts.containsKey(fid)) continue;
-        // 向上找板块行，取「主题: N」/「帖数: N」
-        var node = a.parent;
-        String? emText;
-        for (var i = 0; i < 4 && node != null; i++) {
-          final em = node.querySelector('em');
-          if (em != null &&
-              (em.text.contains('主题') || em.text.contains('帖数'))) {
-            emText = em.text;
-            break;
-          }
-          node = node.parent;
-        }
-        if (emText == null) continue;
-        final n = RegExp(r'(\d+)').firstMatch(emText)?.group(1);
-        counts[fid] = int.tryParse(n ?? '') ?? 0;
-      }
-      logD('parse', '板块统计 -> ${counts.length} 个板块有数据');
-    } catch (e) {
-      logD('parse', '板块统计获取失败: $e');
-    }
-    return counts;
-  }
-
   /// 在线收藏（对应 addFavorites）
   Future<bool> addFavorite(String threadId, String formHash) async {
     try {

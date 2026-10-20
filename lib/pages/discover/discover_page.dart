@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../data/repository/articles_repository.dart';
 import '../../theme/ui_tokens.dart';
 import '../../widgets/article_list_view.dart';
 import 'rank_page.dart';
@@ -24,21 +23,6 @@ class _Section {
 }
 
 class _DiscoverPageState extends State<DiscoverPage> {
-  final _repo = ArticlesRepository.instance;
-  Map<int, int> _counts = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCounts();
-  }
-
-  Future<void> _loadCounts() async {
-    final counts = await _repo.fetchSectionCounts();
-    if (!mounted) return;
-    setState(() => _counts = counts);
-  }
-
   static const _sections = <_Section>[
     _Section('原创发布区', 2, Icons.edit_outlined, Color(0xFF10B981)),
     _Section('精品软件区', 16, Icons.apps, Color(0xFF60A5FA)),
@@ -54,8 +38,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
     _Section('福利经验区', 66, Icons.card_giftcard, Color(0xFFFCD34D)),
     _Section('水漫金山区', 10, Icons.water_drop_outlined, Color(0xFF94A3B8)),
   ];
-
-  final _refreshKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -75,12 +57,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
                     fontWeight: FontWeight.bold,
                     color: UiTokens.textDark,
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  key: _refreshKey,
-                  icon: const Icon(Icons.refresh, color: UiTokens.textGray),
-                  onPressed: _loadCounts,
                 ),
               ],
             ),
@@ -163,7 +139,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
                                     ),
                                   ),
                                 ),
-                                _CountPill(count: _counts[s.fid]),
                                 const SizedBox(width: 8),
                                 const Icon(Icons.chevron_right,
                                     size: 18, color: Color(0xFFBBBBBB)),
@@ -231,34 +206,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
         builder: (_) => _SectionArticlesPage(
           title: s.name,
           query: 'forum-${s.fid}-1.html',
-        ),
-      ),
-    );
-  }
-}
-
-/// 板块数据胶囊：加载中显示 -，有数据显示真实主题数（>0 绿底绿字）
-class _CountPill extends StatelessWidget {
-  const _CountPill({required this.count});
-
-  final int? count;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = (count ?? 0) > 0;
-    return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: active ? UiTokens.mintGreenLight : const Color(0xFFF0F0F0),
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Text(
-        count == null ? '-' : '$count',
-        style: TextStyle(
-          fontSize: 11,
-          color: active ? UiTokens.mintGreen : UiTokens.textGray,
         ),
       ),
     );

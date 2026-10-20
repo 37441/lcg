@@ -22,15 +22,18 @@ class HtmlView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: padding,
-      child: HtmlWidget(
-        html,
-        textStyle: TextStyle(
-          fontSize: UiTokens.fontBody,
-          height: 1.6,
-          color: Theme.of(context).colorScheme.onSurface,
+      // 长按可选择文字复制
+      child: SelectionArea(
+        child: HtmlWidget(
+          html,
+          textStyle: TextStyle(
+            fontSize: UiTokens.fontBody,
+            height: 1.6,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+          factoryBuilder: () => _RefererFactory(),
+          onTapUrl: (url) => _handleUrlTap(context, url),
         ),
-        factoryBuilder: () => _RefererFactory(),
-        onTapUrl: (url) => _handleUrlTap(context, url),
       ),
     );
   }
