@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../../core/account/account_manager.dart';
-import '../../core/config/website_constants.dart';
-import '../../data/models/discover.dart';
-import '../../data/repository/rank_repository.dart';
 import '../../theme/ui_tokens.dart';
 import '../../widgets/article_list_view.dart';
-import '../../widgets/common_views.dart';
+import 'rank_page.dart';
 
-/// 发现页：论坛板块导航 + 排行榜（对应 DiscoverFragment）
+/// 社区页（板块导读）—— 薄荷绿极简卡片风格
 class DiscoverPage extends StatefulWidget {
   const DiscoverPage({super.key});
 
@@ -17,29 +12,194 @@ class DiscoverPage extends StatefulWidget {
   State<DiscoverPage> createState() => _DiscoverPageState();
 }
 
+/// 52pojie 真实板块（名称与 fid 均取自网站实测）
+class _Section {
+  const _Section(this.name, this.fid, this.icon, this.color);
+
+  final String name;
+  final int fid;
+  final IconData icon;
+  final Color color;
+}
+
 class _DiscoverPageState extends State<DiscoverPage> {
+  static const _sections = <_Section>[
+    _Section('原创发布区', 2, Icons.edit_outlined, Color(0xFF10B981)),
+    _Section('精品软件区', 16, Icons.apps, Color(0xFF60A5FA)),
+    _Section('逆向资源区', 4, Icons.alt_route, Color(0xFFF472B6)),
+    _Section('脱壳破解区', 5, Icons.vpn_key_outlined, Color(0xFFFBBF24)),
+    _Section('移动安全区', 65, Icons.phone_android, Color(0xFFA78BFA)),
+    _Section('编程语言区', 24, Icons.code, Color(0xFFFB923C)),
+    _Section('悬赏问答区', 8, Icons.help_outline, Color(0xFF2DD4BF)),
+    _Section('安全工具区', 41, Icons.build_outlined, Color(0xFFFB7185)),
+    _Section('病毒分析区', 32, Icons.bug_report_outlined, Color(0xFF34D399)),
+    _Section('病毒救援区', 50, Icons.healing, Color(0xFF38BDF8)),
+    _Section('动画发布区', 6, Icons.movie_outlined, Color(0xFFC084FC)),
+    _Section('福利经验区', 66, Icons.card_giftcard, Color(0xFFFCD34D)),
+    _Section('水漫金山区', 10, Icons.water_drop_outlined, Color(0xFF94A3B8)),
+  ];
+
+  final _refreshKey = GlobalKey();
+
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
+    return ColoredBox(
+      color: UiTokens.communityBg,
       child: Column(
         children: [
-          TabBar(
-            tabAlignment: TabAlignment.start,
-            labelPadding: const EdgeInsets.symmetric(horizontal: UiTokens.spaceS),
-            labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            indicatorColor: Theme.of(context).colorScheme.primary,
-            tabs: const [
-              Tab(text: '板块导航'),
-              Tab(text: '排行榜'),
-            ],
+          // Top Bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(UiTokens.spaceM, 12, UiTokens.spaceM, 8),
+            child: Row(
+              children: [
+                const Text(
+                  '社区',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: UiTokens.textDark,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  key: _refreshKey,
+                  icon: const Icon(Icons.refresh, color: UiTokens.textGray),
+                  onPressed: () => setState(() {}),
+                ),
+              ],
+            ),
           ),
           Expanded(
-            child: TabBarView(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                  UiTokens.spaceM, 0, UiTokens.spaceM, UiTokens.spaceM),
               children: [
-                _ForumNavTab(),
-                const _RankTab(),
+                // 板块导读卡片
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.all(UiTokens.spaceM),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: UiTokens.mintGreen,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '板块导读',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: UiTokens.textDark,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0F0F0),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${_sections.length} 个板块',
+                              style: const TextStyle(
+                                  fontSize: 11, color: UiTokens.textGray),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      for (final s in _sections)
+                        InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () => _openSection(s),
+                          child: SizedBox(
+                            height: 56,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: s.color,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(s.icon, color: Colors.white, size: 22),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    s.name,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                      color: UiTokens.textDark,
+                                    ),
+                                  ),
+                                ),
+                                _TodayPill(count: 0),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.chevron_right,
+                                    size: 18, color: Color(0xFFBBBBBB)),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // 今日热榜入口
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RankPage()),
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.all(UiTokens.spaceM),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: UiTokens.mintGreen,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.local_fire_department,
+                              color: Colors.white, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            '今日热榜',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: UiTokens.textDark,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right,
+                            size: 18, color: Color(0xFFBBBBBB)),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -47,115 +207,50 @@ class _DiscoverPageState extends State<DiscoverPage> {
       ),
     );
   }
-}
 
-class _ForumNavTab extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final loggedIn = context.watch<AccountManager>().isLoggedIn;
-    final common = <({String title, String url})>[
-      (title: '移动安全', url: WebsiteConstants.mobSecurityQuery),
-      (title: '精品软件', url: WebsiteConstants.softwareQuery),
-      (title: '原创发布', url: WebsiteConstants.originalReleaseQuery),
-      if (loggedIn) ...[
-        (title: '水漫金山', url: WebsiteConstants.freeChatQuery),
-        (title: '福利经验', url: WebsiteConstants.welfareQuery),
-      ],
-    ];
-    final more = <({String title, String url})>[
-      (title: '编程语言', url: WebsiteConstants.programLanguageQuery),
-      (title: '动画发布', url: WebsiteConstants.animationReleaseQuery),
-      (title: '逆向资源', url: WebsiteConstants.reverseResourceQuery),
-      (title: '悬赏问答', url: WebsiteConstants.qaQuery),
-      if (loggedIn) ...[
-        (title: '病毒分析', url: WebsiteConstants.virusAnalysisQuery),
-        (title: '病毒救援', url: WebsiteConstants.virusRescueQuery),
-        (title: '病毒样本', url: WebsiteConstants.virusSampleQuery),
-      ],
-    ];
-
-    return ListView(
-      padding: const EdgeInsets.all(UiTokens.spaceM),
-      children: [
-        Text(
-          '常用板块导航',
-          style: TextStyle(
-            fontSize: UiTokens.fontAux,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+  void _openSection(_Section s) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _SectionArticlesPage(
+          title: s.name,
+          query: 'forum-${s.fid}-1.html',
         ),
-        const SizedBox(height: UiTokens.spaceS),
-        _ForumGrid(items: common),
-        const SizedBox(height: UiTokens.spaceL),
-        Text(
-          '更多板块',
-          style: TextStyle(
-            fontSize: UiTokens.fontAux,
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: UiTokens.spaceS),
-        _ForumGrid(items: more),
-      ],
+      ),
     );
   }
 }
 
-class _ForumGrid extends StatelessWidget {
-  const _ForumGrid({required this.items});
+/// 「今日 XX」胶囊：0 灰底灰字，>0 绿底绿字
+class _TodayPill extends StatelessWidget {
+  const _TodayPill({required this.count});
 
-  final List<({String title, String url})> items;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.1,
-      children: [
-        for (final item in items)
-          InkWell(
-            borderRadius: BorderRadius.circular(UiTokens.cornerS),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => _ForumArticlesPage(
-                    title: item.title,
-                    query: item.url,
-                  ),
-                ),
-              );
-            },
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: scheme.primaryContainer,
-                  child: Icon(Icons.forum_outlined,
-                      color: scheme.onPrimaryContainer, size: 22),
-                ),
-                const SizedBox(height: UiTokens.spaceS),
-                Text(
-                  item.title,
-                  style: TextStyle(
-                      fontSize: UiTokens.fontTag, color: scheme.onSurface),
-                ),
-              ],
-            ),
-          ),
-      ],
+    final active = count > 0;
+    return Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: active ? UiTokens.mintGreenLight : const Color(0xFFF0F0F0),
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Text(
+        '今日 $count',
+        style: TextStyle(
+          fontSize: 11,
+          color: active ? UiTokens.mintGreen : UiTokens.textGray,
+        ),
+      ),
     );
   }
 }
 
-class _ForumArticlesPage extends StatelessWidget {
-  const _ForumArticlesPage({required this.title, required this.query});
+class _SectionArticlesPage extends StatelessWidget {
+  const _SectionArticlesPage({required this.title, required this.query});
 
   final String title;
   final String query;
@@ -167,122 +262,4 @@ class _ForumArticlesPage extends StatelessWidget {
       body: ArticleListView(query: query),
     );
   }
-}
-
-class _RankTab extends StatefulWidget {
-  const _RankTab();
-
-  @override
-  State<_RankTab> createState() => _RankTabState();
-}
-
-class _RankTabState extends State<_RankTab> {
-  final _repo = RankRepository.instance;
-  RankListModel? _model;
-  var _loading = true;
-  var _type = RankType.view;
-
-  static const _types = [
-    (RankType.view, '查看'),
-    (RankType.reply, '回复'),
-    (RankType.heat, '热度'),
-    (RankType.favorite, '收藏'),
-    (RankType.share, '分享'),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _fetch();
-  }
-
-  Future<void> _fetch() async {
-    setState(() {
-      _loading = true;
-    });
-    try {
-      final model = await _repo.fetchRank(_type, DateType.today);
-      if (!mounted) return;
-      setState(() {
-        _model = model;
-        _loading = false;
-      });
-    } catch (_) {
-      setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final model = _model;
-    return Column(
-      children: [
-        SizedBox(
-          height: 40,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: UiTokens.spaceM),
-            children: [
-              for (final (type, label) in _types)
-                Padding(
-                  padding: const EdgeInsets.only(right: UiTokens.spaceS),
-                  child: ChoiceChip(
-                    label: Text(label),
-                    selected: _type == type,
-                    onSelected: (_) {
-                      setState(() => _type = type);
-                      _fetch();
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: _loading
-              ? const LoadingView()
-              : (model == null || model.list.isEmpty)
-                  ? const EmptyView()
-                  : ListView.builder(
-                      itemCount: model.list.length,
-                      itemBuilder: (context, i) {
-                        final item = model.list[i];
-                        return ListTile(
-                          leading: Text(
-                            '${item.index}',
-                            style: TextStyle(
-                              fontSize: UiTokens.fontBody,
-                              fontWeight: FontWeight.bold,
-                              color: i < 3
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          subtitle: Text('${item.forum} · ${item.authorName}'),
-                          trailing: Text(
-                            '${_typeLabel(item.type)} ${item.num}',
-                            style: const TextStyle(fontSize: UiTokens.fontTag),
-                          ),
-                          onTap: () {
-                            Navigator.pushNamed(context, '/article',
-                                arguments: item.url.startsWith('http')
-                                    ? item.url
-                                    : 'https://www.52pojie.cn/${item.url}');
-                          },
-                        );
-                      },
-                    ),
-        ),
-      ],
-    );
-  }
-
-  String _typeLabel(RankType t) => switch (t) {
-        RankType.view => '查看',
-        RankType.reply => '回复',
-        RankType.heat => '热度',
-        RankType.favorite => '收藏',
-        RankType.share => '分享',
-      };
 }

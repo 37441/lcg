@@ -10,6 +10,13 @@ class UiTokens {
   static const Color primaryContainer = Color(0xFFDBEAFE);
   static const Color onPrimaryContainer = Color(0xFF1E40AF);
 
+  // ---- 社区页（薄荷绿体系）----
+  static const Color mintGreen = Color(0xFF10B981);
+  static const Color mintGreenLight = Color(0xFFD1FAE5);
+  static const Color communityBg = Color(0xFFF7F7F7);
+  static const Color textDark = Color(0xFF111111);
+  static const Color textGray = Color(0xFF666666);
+
   // ---- 背景层级 ----
   static const Color background = Color(0xFFF5F5F5);
   static const Color surface = Color(0xFFFFFFFF);

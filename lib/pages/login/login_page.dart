@@ -1,8 +1,11 @@
+import 'dart:io' show Cookie;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart' hide Cookie;
 
 import '../../core/config/website_constants.dart';
+import '../../core/network/cookie_store.dart';
 import '../../core/utils/toast.dart';
 import '../../data/repository/login_repository.dart';
 import '../../theme/ui_tokens.dart';
@@ -37,7 +40,6 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _fetchLoginPage() async {
     setState(() {
       _loadingPage = true;
-      _error = null;
     });
     try {
       final data = await _repo.fetchLoginPage();
@@ -269,6 +271,35 @@ class WebLoginPage extends StatefulWidget {
 }
 
 class _WebLoginPageState extends State<WebLoginPage> {
+  var _syncing = false;
+  var _done = false;
+
+  /// 把 WebView 的 Cookie 同步到 dio 的 cookie 池（含 saltkey），否则后续原生请求仍是未登录
+  Future<void> _syncCookiesAndNotify() async {
+    if (_syncing || _done) return;
+    _syncing = true;
+    try {
+      final cookies = await CookieManager.instance()
+          .getCookies(url: WebUri(WebsiteConstants.serverBaseUrl));
+      if (cookies.isNotEmpty) {
+        final jarCookies = <Cookie>[
+          for (final c in cookies)
+            Cookie(c.name, c.value)
+              ..domain = c.domain ?? 'www.52pojie.cn'
+              ..path = c.path ?? '/',
+        ];
+        await CookieStore.jar.saveFromResponse(
+          Uri.parse(WebsiteConstants.serverBaseUrl),
+          jarCookies,
+        );
+      }
+      _done = true;
+      widget.onLoggedIn?.call();
+    } catch (_) {
+      _syncing = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -277,12 +308,15 @@ class _WebLoginPageState extends State<WebLoginPage> {
         initialUrlRequest:
             URLRequest(url: WebUri(WebsiteConstants.serverBaseUrl + WebsiteConstants.loginQuery)),
         onLoadStop: (controller, url) async {
-          // 检测是否已跳回论坛首页（登录成功特征：页面含 div.avt 或 URL 变 index）
-          final html = await controller.evaluateJavascript(
-              source: "document.querySelectorAll('div.avt').length");
-          if (html == '1' || (html is String && html.contains('1'))) {
-            widget.onLoggedIn?.call();
-          }
+          // 登录成功后会跳转到论坛页（页面包含 div.avt）
+          try {
+            final count = await controller.evaluateJavascript(
+                source: "document.querySelectorAll('div.avt').length");
+            final s = count?.toString() ?? '0';
+            if (s.isNotEmpty && s != '0') {
+              await _syncCookiesAndNotify();
+            }
+          } catch (_) {}
         },
       ),
     );

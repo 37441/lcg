@@ -11,7 +11,7 @@ class FloatingNavBar extends StatelessWidget {
 
   static const _items = <(IconData, IconData, String)>[
     (Icons.home_outlined, Icons.home, '首页'),
-    (Icons.explore_outlined, Icons.explore, '发现'),
+    (Icons.explore_outlined, Icons.explore, '社区'),
     (Icons.notifications_outlined, Icons.notifications, '消息'),
     (Icons.person_outline, Icons.person, '我的'),
   ];
@@ -48,7 +48,7 @@ class FloatingNavBar extends StatelessWidget {
                       Icon(
                         currentIndex == i ? _items[i].$2 : _items[i].$1,
                         size: UiTokens.sizeTabIcon,
-                        color: currentIndex == i ? scheme.primary : UiTokens.tabUnselected,
+                        color: currentIndex == i ? UiTokens.mintGreen : UiTokens.tabUnselected,
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -56,7 +56,7 @@ class FloatingNavBar extends StatelessWidget {
                         style: TextStyle(
                           fontSize: UiTokens.fontTag,
                           color:
-                              currentIndex == i ? scheme.primary : UiTokens.tabUnselected,
+                              currentIndex == i ? UiTokens.mintGreen : UiTokens.tabUnselected,
                         ),
                       ),
                     ],
