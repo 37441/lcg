@@ -6,42 +6,53 @@ import '../../core/network/api_client.dart';
 import '../models/article.dart';
 import '../parser/articles_parser.dart';
 
-/// 本地数据库 —— 对应原生 Room articles.db，含阅读历史与本地收藏
+/// 本地数据库 —— 阅读历史与本地收藏
 class AppDatabase {
   AppDatabase._();
 
   static Database? _db;
+
+  static const _createHistory = '''
+    CREATE TABLE history(
+      url TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      author TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL DEFAULT '',
+      timestamp INTEGER NOT NULL
+    )
+  ''';
+
+  static const _createFavorite = '''
+    CREATE TABLE favorite(
+      url TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      timestamp INTEGER NOT NULL
+    )
+  ''';
 
   static Future<Database> get instance async {
     if (_db != null) return _db!;
     final path = join(await getDatabasesPath(), 'articles.db');
     _db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE history(
-            url TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            author TEXT NOT NULL DEFAULT '',
-            content TEXT NOT NULL DEFAULT '',
-            timestamp INTEGER NOT NULL
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE favorite(
-            url TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            timestamp INTEGER NOT NULL
-          )
-        ''');
+        await db.execute(_createHistory);
+        await db.execute(_createFavorite);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // 旧版本表结构不兼容（存在非空 id 列），重建表
+        await db.execute('DROP TABLE IF EXISTS history');
+        await db.execute('DROP TABLE IF EXISTS favorite');
+        await db.execute(_createHistory);
+        await db.execute(_createFavorite);
       },
     );
     return _db!;
   }
 }
 
-/// 阅读历史仓库（替代 Room HistoryDao）
+/// 阅读历史仓库
 class HistoryRepository {
   HistoryRepository._();
 
@@ -87,7 +98,7 @@ class HistoryRepository {
   }
 }
 
-/// 本地收藏仓库（对应 FavoriteDataSource 本地部分 + FavoriteArticlesViewModel）
+/// 本地收藏仓库
 class FavoriteLocalRepository {
   FavoriteLocalRepository._();
 
@@ -130,7 +141,7 @@ class FavoriteLocalRepository {
   }
 }
 
-/// 在线收藏仓库（对应 FavoriteDataSource.getAllRemoteFavorites + 删除）
+/// 在线收藏仓库
 class FavoriteRemoteRepository {
   FavoriteRemoteRepository._();
 
@@ -152,7 +163,6 @@ class FavoriteRemoteRepository {
   Future<bool> removeRemote(String delUrl) async {
     try {
       final doc = await _api.getWithQuery(delUrl);
-      // 对应原生删除接口：返回 ajax 成功标记
       return !(doc.documentElement?.outerHtml.contains('error') ?? true);
     } catch (_) {
       return false;

@@ -177,6 +177,11 @@ class _WebLoginPageState extends State<WebLoginPage> {
           );
         } catch (_) {}
       }
+      // 同时保存原始 Cookie 头，原生请求优先使用（避免域匹配问题）
+      try {
+        final header = cookies.map((c) => '${c.name}=${c.value}').join('; ');
+        await CookieStore.setWebCookieHeader(header);
+      } catch (_) {}
       _done = true;
       UserDataRepo.setLoggedIn(true);
       unawaited(LoginRepository.instance.verifyLoggedInAfterWebLogin());

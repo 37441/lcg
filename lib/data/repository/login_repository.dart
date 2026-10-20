@@ -112,7 +112,7 @@ class LoginRepository {
       }
       // 无法判定时用个人页验证
       try {
-        final info = await _requestUserInfo();
+        final info = await requestUserInfo();
         if (info.isValid) {
           return _handleSuccess();
         }
@@ -126,7 +126,7 @@ class LoginRepository {
   /// 网页登录兜底后：用个人页验证并回写登录态
   Future<LoginResult> verifyLoggedInAfterWebLogin() async {
     try {
-      final info = await _requestUserInfo();
+      final info = await requestUserInfo();
       if (info.isValid) {
         return _handleSuccess();
       }
@@ -139,14 +139,14 @@ class LoginRepository {
   Future<LoginResult> _handleSuccess() async {
     UserDataRepo.setLoggedIn(true);
     try {
-      final info = await _requestUserInfo();
+      final info = await requestUserInfo();
       UserDataRepo.updateUserInfo(info);
     } catch (_) {}
     return const LoginSuccess();
   }
 
   /// 拉取用户信息（对应 UserInfoRepo.requestUserInfo）
-  Future<UserInfo> _requestUserInfo() async {
+  Future<UserInfo> requestUserInfo() async {
     final doc = await _api.getWithQuery(WebsiteConstants.profileQuery);
     if (ApiClient.instance.formHash == null) {
       _syncFormHash(DocParser.extractFormHash(doc.documentElement!.outerHtml) ?? '');

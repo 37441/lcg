@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/account/account_manager.dart';
+import '../../core/account/user_data_repo.dart';
 import '../../core/config/website_constants.dart';
+import '../../data/repository/login_repository.dart';
 import '../../theme/ui_tokens.dart';
 import '../article/article_page.dart';
 import '../favorite/favorite_page.dart';
@@ -14,27 +16,51 @@ import '../message/message_page.dart';
 import '../settings/settings_page.dart';
 
 /// 我的页（对应 MeFragment）
-class MePage extends StatelessWidget {
+class MePage extends StatefulWidget {
   const MePage({super.key});
+
+  @override
+  State<MePage> createState() => _MePageState();
+}
+
+class _MePageState extends State<MePage> {
+  @override
+  void initState() {
+    super.initState();
+    _refreshUserInfo();
+  }
+
+  /// 已登录但用户信息为空时主动拉取（登录后同步/重启后恢复）
+  Future<void> _refreshUserInfo() async {
+    if (!AccountManager.instance.isLoggedIn) return;
+    final info = await LoginRepository.instance.requestUserInfo();
+    if (info.isValid) {
+      UserDataRepo.updateUserInfo(info);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AccountManager>(
       builder: (context, am, _) {
         final loggedIn = am.isLoggedIn;
-        return ListView(
-          padding: const EdgeInsets.all(UiTokens.spaceM),
-          children: [
-            _UserCard(loggedIn: loggedIn),
-            const SizedBox(height: UiTokens.spaceM),
-            if (!loggedIn)
-              _LoginEntryCard()
-            else ...[
-              _FeatureGrid(),
+        return RefreshIndicator(
+          onRefresh: _refreshUserInfo,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(UiTokens.spaceM),
+            children: [
+              _UserCard(loggedIn: loggedIn),
               const SizedBox(height: UiTokens.spaceM),
-              _NotificationCard(),
+              if (!loggedIn)
+                _LoginEntryCard()
+              else ...[
+                _FeatureGrid(),
+                const SizedBox(height: UiTokens.spaceM),
+                _NotificationCard(),
+              ],
             ],
-          ],
+          ),
         );
       },
     );

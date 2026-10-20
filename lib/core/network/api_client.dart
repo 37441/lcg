@@ -71,6 +71,16 @@ class ApiClient {
       },
     ));
     _dio.interceptors.add(CookieManager(jar));
+    // 登录后优先使用 WebView 同步的原始 Cookie 头（避免 cookie_jar 域匹配问题）
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        final h = CookieStore.webCookieHeader;
+        if (h != null && h.isNotEmpty) {
+          options.headers['Cookie'] = h;
+        }
+        handler.next(options);
+      },
+    ));
   }
 
   Dio get dio => _dio;
