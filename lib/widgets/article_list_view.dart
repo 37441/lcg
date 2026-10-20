@@ -27,6 +27,7 @@ class _ArticleListViewState extends State<ArticleListView> {
   var _loadingMore = false;
   var _error = false;
   var _hasMore = true;
+  var _wafTried = false;
 
   @override
   void initState() {
@@ -70,9 +71,14 @@ class _ArticleListViewState extends State<ArticleListView> {
     }
   }
 
-  /// 命中 WAF 挑战：用 WebView 穿透后重试
+  /// 命中 WAF 挑战：用 WebView 穿透后重试（仅自动一次，避免循环）
   Future<void> _solveWaf(String url, Future<void> Function() retry) async {
     if (!mounted) return;
+    if (_wafTried) {
+      setState(() => _error = true);
+      return;
+    }
+    _wafTried = true;
     final ok = await WafChallengePage.ensure(context, url);
     if (!mounted) return;
     if (ok) {

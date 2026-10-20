@@ -51,7 +51,8 @@ class ApiClient {
   static final ApiClient instance = ApiClient._();
 
   static const _timeout = Duration(seconds: 15);
-  static const _userAgent =
+  /// 统一桌面 UA：原生请求与 WebView（WAF/登录）必须一致，否则 WAF 验证 cookie 不认
+  static const userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -71,7 +72,7 @@ class ApiClient {
       followRedirects: true,
       validateStatus: (_) => true, // 允许非 2xx 也读取 body 解析错误页
       headers: {
-        'User-Agent': _userAgent,
+        'User-Agent': userAgent,
         'Referer': WebsiteConstants.serverBaseUrl,
         'Accept-Language': 'zh-CN,zh;q=0.9',
       },

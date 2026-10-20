@@ -169,6 +169,7 @@ class ArticlesParser {
     }
     final nextPageUrl = doc.querySelector('a.nxt')?.attributes['href'] ?? '';
     final formHash = doc.querySelector('input[name="formhash"]')?.attributes['value'] ?? '';
+    final replyFormAction = _getReplyFormAction(doc);
     final replyAddUrls = _getReplyAddUrls(doc);
     final userInfos = _getUserInfos(doc);
     final contents = _getContents(doc);
@@ -198,7 +199,19 @@ class ArticlesParser {
       posts: posts,
       nextPageUrl: nextPageUrl,
       formHash: formHash,
+      replyFormAction: replyFormAction,
     );
+  }
+
+  /// 回复提交表单 action（优先 fastpostform，其次快回复链接）
+  static String _getReplyFormAction(dom.Document doc) {
+    final form = doc.querySelector('form[id^="fastpostform"]') ??
+        doc.querySelector('form[action*="action=reply"]');
+    if (form != null) {
+      final action = form.attributes['action'] ?? '';
+      if (action.isNotEmpty) return action;
+    }
+    return doc.querySelector('.fastre')?.attributes['href'] ?? '';
   }
 
   /// 首楼预览（对应 getFirstPost）

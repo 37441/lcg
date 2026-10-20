@@ -32,12 +32,16 @@ class ArticleDetail {
     required this.posts,
     this.nextPageUrl = '',
     this.formHash = '',
+    this.replyFormAction = '',
   });
 
   final String title;
   final List<Post> posts;
   final String nextPageUrl;
   final String formHash;
+
+  /// 回复提交表单 action（论坛快回复）
+  final String replyFormAction;
 }
 
 class Post {

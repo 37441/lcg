@@ -83,23 +83,43 @@ class ArticlesRepository {
     }
   }
 
-  /// 回复帖子：POST 到回复 URL（对应 ReplyPostViewModel）
-  Future<bool> replyPost({
-    required String replyUrl,
+  /// 回复帖子：POST 到快回复表单 action
+  /// 返回 null 表示成功，否则为错误提示
+  Future<String?> replyPost({
+    required String replyAction,
     required String formHash,
     required String message,
   }) async {
     try {
+      final url = replyAction.startsWith('http')
+          ? replyAction
+          : WebsiteConstants.serverBaseUrl + replyAction;
       final form = <String, String>{
         'formhash': formHash,
         'message': message,
         'replysubmit': 'yes',
       };
-      final resp = await _api.postForm(WebsiteConstants.serverBaseUrl + replyUrl, form);
+      final resp = await _api.postForm(url, form);
       final body = resp.data ?? '';
-      return !body.contains('messagetext') && !body.contains('没有权限');
-    } catch (_) {
-      return false;
+      final err = RegExp(r'<div class="alert_error"[^>]*>([\s\S]*?)</div>')
+              .firstMatch(body)
+              ?.group(1) ??
+          RegExp(r'id="messagetext"[^>]*>([\s\S]*?)</')
+              .firstMatch(body)
+              ?.group(1);
+      final success = body.contains('succeed') ||
+          body.contains('回复成功') ||
+          body.contains('感谢');
+      if (success) return null;
+      if (err != null && err.trim().isNotEmpty) {
+        return err.replaceAll(RegExp(r'<[^>]+>'), '').trim();
+      }
+      if (body.contains('没有权限') || body.contains('请先登录')) {
+        return '未登录或无权限，请先登录';
+      }
+      return null;
+    } catch (e) {
+      return '回复失败：$e';
     }
   }
 }

@@ -7,6 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart' hide Cookie;
 
 import '../../core/account/user_data_repo.dart';
 import '../../core/config/website_constants.dart';
+import '../../core/network/api_client.dart';
 import '../../core/network/cookie_store.dart';
 import '../../data/repository/login_repository.dart';
 
@@ -222,6 +223,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
               initialUrlRequest: URLRequest(
                 url: WebUri(WebsiteConstants.serverBaseUrl + WebsiteConstants.loginQuery),
               ),
+              initialSettings: InAppWebViewSettings(userAgent: ApiClient.userAgent),
               onWebViewCreated: (controller) => _controller = controller,
               onLoadStop: (controller, url) async {
                 _controller = controller;

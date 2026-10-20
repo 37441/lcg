@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' hide Cookie;
 
 import '../../core/config/website_constants.dart';
+import '../../core/network/api_client.dart';
 import '../../core/network/cookie_store.dart';
 
 /// 阿里云 WAF JS 挑战穿透页
@@ -112,6 +113,7 @@ class _WafChallengePageState extends State<WafChallengePage> {
           Expanded(
             child: InAppWebView(
               initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+              initialSettings: InAppWebViewSettings(userAgent: ApiClient.userAgent),
               onWebViewCreated: (controller) => _controller = controller,
               onLoadStop: (controller, url) async {
                 _controller = controller;
