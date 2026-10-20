@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/ui_tokens.dart';
 
-/// 悬浮胶囊式底部导航（对应 apk-ui-spec 悬浮胶囊风格）
+/// 底部导航：药丸式选中态（选中 Tab 包裹浅薄荷绿胶囊，未选中仅灰色图标文字）
 class FloatingNavBar extends StatelessWidget {
   const FloatingNavBar({super.key, required this.currentIndex, required this.onTap});
 
@@ -18,18 +18,17 @@ class FloatingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(UiTokens.spaceM, 0, UiTokens.spaceM, 10),
       child: Container(
         height: 60,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-          color: scheme.surface,
+          color: isDark ? UiTokens.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -40,26 +39,44 @@ class FloatingNavBar extends StatelessWidget {
             for (var i = 0; i < _items.length; i++)
               Expanded(
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(24),
                   onTap: () => onTap(i),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        currentIndex == i ? _items[i].$2 : _items[i].$1,
-                        size: UiTokens.sizeTabIcon,
-                        color: currentIndex == i ? UiTokens.mintGreen : UiTokens.tabUnselected,
+                  child: Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: currentIndex == i
+                            ? UiTokens.mintGreenLight
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _items[i].$3,
-                        style: TextStyle(
-                          fontSize: UiTokens.fontTag,
-                          color:
-                              currentIndex == i ? UiTokens.mintGreen : UiTokens.tabUnselected,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            currentIndex == i ? _items[i].$2 : _items[i].$1,
+                            size: 20,
+                            color: currentIndex == i
+                                ? UiTokens.mintGreen
+                                : UiTokens.tabUnselected,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _items[i].$3,
+                            style: TextStyle(
+                              fontSize: UiTokens.fontTag,
+                              fontWeight: currentIndex == i
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                              color: currentIndex == i
+                                  ? UiTokens.mintGreen
+                                  : UiTokens.tabUnselected,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

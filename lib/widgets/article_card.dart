@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/models/article.dart';
 import '../theme/ui_tokens.dart';
 
-/// 文章卡片 —— 对应原生 item_article_view.xml
+/// 文章卡片 —— 纯白大圆角卡片 + 浅色胶囊标签/数据按钮
 class ArticleCard extends StatelessWidget {
   const ArticleCard({super.key, required this.article, this.onTap});
 
@@ -12,16 +12,15 @@ class ArticleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textDark = isDark ? const Color(0xFFE6E6E6) : UiTokens.textDark;
+    final textGray = isDark ? const Color(0xFF9E9E9E) : UiTokens.textGray;
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: UiTokens.spaceM, vertical: 4),
-      color: scheme.surface,
       child: InkWell(
         borderRadius: BorderRadius.circular(UiTokens.cornerM),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-              UiTokens.spaceM, UiTokens.spaceS, UiTokens.spaceM, UiTokens.spaceS),
+          padding: const EdgeInsets.all(UiTokens.spaceM),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -34,55 +33,39 @@ class ArticleCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: UiTokens.fontAux,
+                        fontSize: UiTokens.fontBody,
                         fontWeight: FontWeight.bold,
-                        color: scheme.onSurface,
+                        color: textDark,
                         height: 1.4,
                       ),
                     ),
                   ),
                   if (article.isRecommended) ...[
                     const SizedBox(width: UiTokens.spaceS),
-                    _Tag(
-                      text: '推荐',
-                      bg: scheme.primaryContainer,
-                      fg: scheme.onPrimaryContainer,
-                    ),
+                    const _Pill(text: '推荐', bg: UiTokens.mintGreenLight, fg: UiTokens.mintGreen),
                   ],
                   if (article.helpCoin != 0) ...[
-                    const SizedBox(width: UiTokens.spaceXs),
-                    _Tag(
+                    const SizedBox(width: UiTokens.spaceS),
+                    _Pill(
                       text: article.helpCoin == -1 ? '已解决' : '悬赏${article.helpCoin}',
-                      bg: scheme.primaryContainer,
-                      fg: scheme.onPrimaryContainer,
+                      bg: isDark ? const Color(0xFF2E2E2E) : const Color(0xFFF0F0F0),
+                      fg: textGray,
                     ),
                   ],
                 ],
               ),
-              const SizedBox(height: UiTokens.spaceS),
-              Row(
+              const SizedBox(height: UiTokens.spaceM),
+              // 底部数据栏：浅灰胶囊按钮
+              Wrap(
+                spacing: UiTokens.spaceS,
+                runSpacing: UiTokens.spaceXs,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Text(
-                    '${article.reply} / ${article.view}',
-                    style: TextStyle(
-                        fontSize: UiTokens.fontTag, color: scheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(width: UiTokens.spaceS),
-                  Expanded(
-                    child: Text(
-                      article.origin,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontSize: UiTokens.fontTag, color: scheme.onSurfaceVariant),
-                    ),
-                  ),
-                  const SizedBox(width: UiTokens.spaceS),
-                  Text(
-                    article.author,
-                    style: TextStyle(
-                        fontSize: UiTokens.fontTag, color: scheme.onSurfaceVariant),
-                  ),
+                  _StatPill(text: '回复 ${article.reply}', dark: isDark),
+                  _StatPill(text: '查看 ${article.view}', dark: isDark),
+                  if (article.origin.isNotEmpty)
+                    _StatPill(text: article.origin, dark: isDark),
+                  _StatPill(text: article.author, dark: isDark),
                 ],
               ),
             ],
@@ -93,8 +76,9 @@ class ArticleCard extends StatelessWidget {
   }
 }
 
-class _Tag extends StatelessWidget {
-  const _Tag({required this.text, required this.bg, required this.fg});
+/// 浅色胶囊标签
+class _Pill extends StatelessWidget {
+  const _Pill({required this.text, required this.bg, required this.fg});
 
   final String text;
   final Color bg;
@@ -103,14 +87,37 @@ class _Tag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: UiTokens.spaceS, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(UiTokens.cornerXs),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text, style: TextStyle(fontSize: 11, color: fg)),
+    );
+  }
+}
+
+/// 浅灰胶囊数据按钮
+class _StatPill extends StatelessWidget {
+  const _StatPill({required this.text, required this.dark});
+
+  final String text;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
         text,
-        style: TextStyle(fontSize: 10, color: fg),
+        style: TextStyle(
+          fontSize: 11,
+          color: dark ? const Color(0xFF9E9E9E) : UiTokens.textGray,
+        ),
       ),
     );
   }

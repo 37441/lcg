@@ -44,21 +44,27 @@ class AppTheme {
       brightness: brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor:
-          isDark ? UiTokens.backgroundDark : UiTokens.background,
+          isDark ? UiTokens.backgroundDark : UiTokens.communityBg,
       appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
+        backgroundColor: isDark ? UiTokens.surfaceDark : Colors.white,
+        foregroundColor: isDark ? colorScheme.onSurface : UiTokens.textDark,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        shadowColor: Colors.transparent,
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontSize: UiTokens.fontBody,
           fontWeight: FontWeight.w600,
-          color: colorScheme.onPrimary,
+          color: isDark ? colorScheme.onSurface : UiTokens.textDark,
+        ),
+        iconTheme: IconThemeData(
+          color: isDark ? colorScheme.onSurface : UiTokens.textDark,
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: colorScheme.surface,
-        selectedItemColor: colorScheme.primary,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        selectedItemColor: UiTokens.mintGreen,
         unselectedItemColor: UiTokens.tabUnselected,
         selectedLabelStyle:
             const TextStyle(fontSize: UiTokens.fontTag, fontWeight: FontWeight.w500),
@@ -66,10 +72,15 @@ class AppTheme {
             const TextStyle(fontSize: UiTokens.fontTag),
       ),
       cardTheme: CardThemeData(
-        color: colorScheme.surface,
-        elevation: 1,
+        color: isDark ? UiTokens.surfaceDark : Colors.white,
+        elevation: 0,
+        margin: const EdgeInsets.symmetric(horizontal: UiTokens.spaceM, vertical: 6),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(UiTokens.cornerM),
+          side: BorderSide(
+            color: isDark ? UiTokens.dividerDark : const Color(0xFFEEEEEE),
+            width: 1,
+          ),
         ),
       ),
       dividerColor: colorScheme.outlineVariant,
