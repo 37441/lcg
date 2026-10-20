@@ -6,6 +6,7 @@ import '../../data/models/article.dart';
 import '../../data/repository/articles_repository.dart';
 import '../../theme/ui_tokens.dart';
 import '../../widgets/common_views.dart';
+import '../webview/waf_challenge_page.dart';
 
 /// 文章详情页（对应 ArticleFragment）
 class ArticlePage extends StatefulWidget {
@@ -46,6 +47,16 @@ class _ArticlePageState extends State<ArticlePage> {
         _error = e.message.isEmpty ? '抱歉，帖子已被删除或需要权限' : e.message;
         _loading = false;
       });
+    } on WafChallengeException catch (e) {
+      setState(() => _loading = false);
+      if (!mounted) return;
+      final ok = await WafChallengePage.ensure(context, e.url);
+      if (!mounted) return;
+      if (ok) {
+        await _load();
+      } else {
+        setState(() => _error = '安全验证未通过，请重试');
+      }
     } catch (e) {
       setState(() {
         _error = '加载失败：$e';

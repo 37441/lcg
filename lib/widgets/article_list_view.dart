@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../core/network/api_client.dart';
 import '../data/models/article.dart';
 import '../data/repository/articles_repository.dart';
+import '../pages/webview/waf_challenge_page.dart';
 import 'article_card.dart';
 import 'common_views.dart';
 
@@ -57,11 +59,26 @@ class _ArticleListViewState extends State<ArticleListView> {
         _hasMore = list.isNotEmpty;
         _loading = false;
       });
+    } on WafChallengeException catch (e) {
+      setState(() => _loading = false);
+      await _solveWaf(e.url, _fetch);
     } catch (e) {
       setState(() {
         _loading = false;
         _error = true;
       });
+    }
+  }
+
+  /// 命中 WAF 挑战：用 WebView 穿透后重试
+  Future<void> _solveWaf(String url, Future<void> Function() retry) async {
+    if (!mounted) return;
+    final ok = await WafChallengePage.ensure(context, url);
+    if (!mounted) return;
+    if (ok) {
+      await retry();
+    } else {
+      setState(() => _error = true);
     }
   }
 
@@ -76,6 +93,10 @@ class _ArticleListViewState extends State<ArticleListView> {
         _hasMore = list.isNotEmpty;
         _loadingMore = false;
       });
+    } on WafChallengeException catch (e) {
+      _page--;
+      _loadingMore = false;
+      await _solveWaf(e.url, _loadMore);
     } catch (_) {
       setState(() {
         _page--;

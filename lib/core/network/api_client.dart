@@ -35,6 +35,12 @@ class BlockException implements Exception {
 /// 反爬（对应原生 AntiScrapingException）
 class AntiScrapingException implements Exception {}
 
+/// 阿里云 WAF JS 挑战：需 WebView 执行 JS 过验证后重试
+class WafChallengeException implements Exception {
+  WafChallengeException(this.url);
+  final String url;
+}
+
 /// 请求太频繁（对应原生 RequestTooOftenException）
 class RequestTooOftenException implements Exception {}
 
@@ -105,6 +111,9 @@ class ApiClient {
         options: Options(responseType: ResponseType.bytes),
       );
       final text = _decode(resp.data ?? [], resp.headers.value('content-type'));
+      if (_isWafChallenge(text)) {
+        throw WafChallengeException(url);
+      }
       return html_parser.parse(text);
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
@@ -122,7 +131,11 @@ class ApiClient {
       WebsiteConstants.serverBaseUrl + query,
       options: Options(responseType: ResponseType.bytes),
     );
-    return _decode(resp.data ?? [], resp.headers.value('content-type'));
+    final text = _decode(resp.data ?? [], resp.headers.value('content-type'));
+    if (_isWafChallenge(text)) {
+      throw WafChallengeException(WebsiteConstants.serverBaseUrl + query);
+    }
+    return text;
   }
 
   /// POST 表单，返回响应（对应 sendPostRequestWithUrl）
@@ -160,6 +173,13 @@ class ApiClient {
   Future<dom.Document> postFormDocument(String url, Map<String, String> form) async {
     final resp = await postForm(url, form);
     return html_parser.parse(resp.data ?? '');
+  }
+
+  /// 判断是否为阿里云 WAF 的 JS 挑战页
+  bool _isWafChallenge(String text) {
+    return text.contains('Please enable JavaScript') ||
+        (text.length < 60000 &&
+            text.contains('<h1><strong>Please enable JavaScript') ); 
   }
 
   /// 按响应 Content-Type 解码：52pojie 为 GBK，百度站内为 UTF-8

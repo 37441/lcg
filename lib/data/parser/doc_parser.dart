@@ -1,3 +1,4 @@
+import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import '../../core/account/user_info.dart';
@@ -58,12 +59,25 @@ class DocParser {
       userName: userName,
       avatarUrl: avatar,
       groupInfo: groupInfo,
-      wuaiCoin: infoList.length > 3 ? infoList[3].text : null,
-      credit: infoList.length > 1 ? infoList[1].text : null,
-      answerRate: infoList.length > 6 ? infoList[6].text : null,
-      enthusiasticValue: infoList.length > 7 ? infoList[7].text : null,
+      wuaiCoin: _valueOf(infoList.length > 3 ? infoList[3] : null),
+      credit: _valueOf(infoList.length > 1 ? infoList[1] : null),
+      answerRate: _valueOf(infoList.length > 6 ? infoList[6] : null),
+      enthusiasticValue: _valueOf(infoList.length > 7 ? infoList[7] : null),
       signInStateUrl: signInState,
     );
+  }
+
+  /// 从「吾爱币: 1115CB」这类文本中提取纯数值（如 1115、10%）
+  static String? _valueOf(dom.Element? element) {
+    if (element == null) return null;
+    final t = element.text.trim();
+    if (t.isEmpty) return null;
+    final i1 = t.lastIndexOf(':');
+    final i2 = t.lastIndexOf('：');
+    final sep = i1 > i2 ? i1 : i2;
+    final v = sep >= 0 ? t.substring(sep + 1).trim() : t;
+    final m = RegExp(r'[\d.]+%?').firstMatch(v);
+    return m?.group(0) ?? v;
   }
 
   /// 通知计数（对应 parseNotificationInfo + checkMessages）
