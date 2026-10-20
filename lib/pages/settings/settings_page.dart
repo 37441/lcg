@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/account/account_manager.dart';
 import '../../core/account/user_data_repo.dart';
 import '../../core/config/app_config.dart';
+import '../../core/config/theme_controller.dart';
 import '../../core/network/cookie_store.dart';
 import '../../core/utils/toast.dart';
 import '../login/login_page.dart';
@@ -20,10 +21,72 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final am = context.watch<AccountManager>();
+    final tc = context.watch<ThemeController>();
     return Scaffold(
       appBar: AppBar(title: const Text('『应用设置』')),
       body: ListView(
         children: [
+          _Section(title: '外观'),
+          // 主题色选择
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                for (var i = 0; i < ThemeController.presets.length; i++)
+                  GestureDetector(
+                    onTap: () => tc.setPreset(i),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      margin: const EdgeInsets.only(right: 14),
+                      decoration: BoxDecoration(
+                        color: ThemeController.presets[i].primary,
+                        shape: BoxShape.circle,
+                        border: tc.presetIndex == i
+                            ? Border.all(color: const Color(0xFF111111), width: 2)
+                            : null,
+                      ),
+                      child: tc.presetIndex == i
+                          ? const Icon(Icons.check, color: Colors.white, size: 18)
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.dark_mode_outlined),
+            title: const Text('主题模式'),
+            trailing: DropdownButton<ThemeMode>(
+              value: tc.mode,
+              underline: const SizedBox.shrink(),
+              items: const [
+                DropdownMenuItem(value: ThemeMode.system, child: Text('跟随系统')),
+                DropdownMenuItem(value: ThemeMode.light, child: Text('浅色')),
+                DropdownMenuItem(value: ThemeMode.dark, child: Text('深色/夜间')),
+              ],
+              onChanged: (v) {
+                if (v != null) tc.setMode(v);
+              },
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.format_size),
+            title: const Text('字体大小'),
+            trailing: DropdownButton<double>(
+              value: tc.fontScale,
+              underline: const SizedBox.shrink(),
+              items: const [
+                DropdownMenuItem(value: 0.9, child: Text('小')),
+                DropdownMenuItem(value: 1.0, child: Text('标准')),
+                DropdownMenuItem(value: 1.15, child: Text('大')),
+                DropdownMenuItem(value: 1.25, child: Text('特大')),
+              ],
+              onChanged: (v) {
+                if (v != null) tc.setFontScale(v);
+              },
+            ),
+          ),
           _Section(title: '账号'),
           ListTile(
             leading: const Icon(Icons.person_outline),

@@ -10,11 +10,10 @@ import '../../core/config/website_constants.dart';
 import '../../core/network/cookie_store.dart';
 import '../../data/repository/login_repository.dart';
 
-/// 内嵌网页登录（52pojie 的验证码是「点击验证」人机验证，需在网页内完成）
-/// 登录成功判定（双重）：
-/// 1) 页面出现 Discuz 登录态 DOM（#um / .vwmy）
-/// 2) cookie 中存在 *_auth 且非空
-/// 命中即同步 Cookie、落登录态并自动返回。
+/// 内嵌网页登录（52pojie 验证码为「点击验证」，需真实网页环境）
+/// - 自动填充账号密码 → 自动点击「点击验证」→ 自动提交登录（无感）
+/// - 自动流程失败时回退手动：用户自行点验证并登录
+/// - 登录成功判定：页面登录态 DOM（#um/.vwmy）或 cookie *_auth 出现即同步 Cookie 并自动返回
 class WebLoginPage extends StatefulWidget {
   const WebLoginPage({
     super.key,
@@ -37,8 +36,11 @@ class _WebLoginPageState extends State<WebLoginPage> {
   InAppWebViewController? _controller;
   var _checking = false;
   var _done = false;
-  var _filledForUrl = '';
+  var _manualHint = false;
+  final _filled = <String>{};
+  final _autoTried = <String>{};
   Timer? _timer;
+  Timer? _hintTimer;
 
   static const _jsLoggedCheck = '''
 (function(){
@@ -51,16 +53,62 @@ class _WebLoginPageState extends State<WebLoginPage> {
 })();
 ''';
 
+  static const _jsFill = '''
+(function(un, pw, qid, ans){
+  try {
+    var u=document.querySelector('input[name="username"]'); if(u) u.value=un;
+    var p=document.querySelector('input[name="password"]'); if(p) p.value=pw;
+    var a=document.querySelector('input[name="answer"]'); if(a && ans) a.value=ans;
+    var q=document.querySelector('select[name="questionid"]'); if(q) q.value=qid;
+  } catch(e) {}
+})''';
+
+  static const _jsClickVerify = '''
+(function(){
+  try {
+    var sels = ['#vseccode_cS input[type=checkbox]', '#vseccode_cS .verify',
+      '[class*=verify] input[type=checkbox]', 'input[type=checkbox][name*=seccode]',
+      '#nc_1_wrapper', '.sclogin_verify'];
+    for (var i=0;i<sels.length;i++){ var el=document.querySelector(sels[i]); if(el){ el.click(); return 'clicked'; } }
+    var all=document.querySelectorAll('div,span,label,button,a');
+    for (var j=0;j<all.length;j++){
+      var t=(all[j].innerText||'').trim();
+      if(t==='点击验证' || t==='点击按钮进行验证'){ all[j].click(); return 'clicked-text'; }
+    }
+  } catch(e) {}
+  return 'none';
+})();
+''';
+
+  static const _jsSubmit = '''
+(function(){
+  try {
+    var btn=document.querySelector('button[type=submit], input[type=submit], #login_btn, button[name=loginsubmit]');
+    if(!btn){
+      var bs=document.querySelectorAll('button,a,input');
+      for(var k=0;k<bs.length;k++){
+        var t=(bs[k].innerText||bs[k].value||'').trim();
+        if(t==='登录'){ btn=bs[k]; break; }
+      }
+    }
+    if(btn){ btn.click(); return 'clicked'; }
+    var f=document.querySelector('form[action*=loginsubmit]');
+    if(f){ f.submit(); return 'submitted'; }
+  } catch(e) {}
+  return 'none';
+})();
+''';
+
   @override
   void initState() {
     super.initState();
-    // 轮询检测：登录成功后无需等待页面跳转即可识别
     _timer = Timer.periodic(const Duration(milliseconds: 1500), (_) => _checkLogin());
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _hintTimer?.cancel();
     super.dispose();
   }
 
@@ -68,24 +116,31 @@ class _WebLoginPageState extends State<WebLoginPage> {
     final controller = _controller;
     if (controller == null || widget.username == null || widget.password == null) return;
     final urlStr = url?.toString() ?? '';
-    if (!urlStr.contains('action=login') || _filledForUrl == urlStr) return;
-    _filledForUrl = urlStr;
-    final js = '''
-(function(){
-  try {
-    var u=document.querySelector('input[name="username"]');
-    if(u){u.value=${jsonEncode(widget.username)};}
-    var p=document.querySelector('input[name="password"]');
-    if(p){p.value=${jsonEncode(widget.password)};}
-    var a=document.querySelector('input[name="answer"]');
-    if(a && ${jsonEncode(widget.answer ?? '')} !== ''){a.value=${jsonEncode(widget.answer ?? '')};}
-    var q=document.querySelector('select[name="questionid"]');
-    if(q){q.value=${jsonEncode(widget.questionId ?? '0')};}
-  } catch(e) {}
-})();
-''';
+    if (!urlStr.contains('action=login') || _filled.contains(urlStr)) return;
+    _filled.add(urlStr);
+    final js = '$_jsFill(${jsonEncode(widget.username)}, ${jsonEncode(widget.password)}, '
+        '${jsonEncode(widget.questionId)}, ${jsonEncode(widget.answer)})';
     try {
       await controller.evaluateJavascript(source: js);
+    } catch (_) {}
+  }
+
+  /// 自动点击验证 + 自动提交（无感登录；失败则交由用户手动完成）
+  Future<void> _autoVerifyAndSubmit(Uri? url) async {
+    final controller = _controller;
+    if (controller == null || widget.username == null || widget.password == null) return;
+    final urlStr = url?.toString() ?? '';
+    if (!urlStr.contains('action=login') || _autoTried.contains(urlStr)) return;
+    _autoTried.add(urlStr);
+    try {
+      await controller.evaluateJavascript(source: _jsClickVerify);
+      await Future.delayed(const Duration(seconds: 3));
+      await controller.evaluateJavascript(source: _jsSubmit);
+      // 12 秒仍未成功 → 提示手动
+      _hintTimer?.cancel();
+      _hintTimer = Timer(const Duration(seconds: 12), () {
+        if (mounted && !_done) setState(() => _manualHint = true);
+      });
     } catch (_) {}
   }
 
@@ -93,7 +148,6 @@ class _WebLoginPageState extends State<WebLoginPage> {
     if (_checking || _done) return;
     _checking = true;
     try {
-      // 1) 页面登录态 DOM
       var logged = false;
       final controller = _controller;
       if (controller != null) {
@@ -102,8 +156,6 @@ class _WebLoginPageState extends State<WebLoginPage> {
           if ((r?.toString() ?? '').contains('OK')) logged = true;
         } catch (_) {}
       }
-
-      // 2) cookie 登录态（逐个安全转换，避免个别非法 cookie 中断）
       final cookies = await CookieManager.instance()
           .getCookies(url: WebUri(WebsiteConstants.serverBaseUrl));
       final jarCookies = <Cookie>[];
@@ -151,11 +203,13 @@ class _WebLoginPageState extends State<WebLoginPage> {
         children: [
           Container(
             width: double.infinity,
-            color: const Color(0xFFFFF7E6),
+            color: _manualHint ? const Color(0xFFFFEDD5) : const Color(0xFFFFF7E6),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: const Text(
-              '账号密码已自动填写，请点击页面中的「点击验证」完成人机验证，再点「登录」。登录成功后会自动返回。',
-              style: TextStyle(fontSize: 12, color: Color(0xFF8A6D3B)),
+            child: Text(
+              _manualHint
+                  ? '自动登录未完成，请手动点击「点击验证」并点「登录」。'
+                  : '正在自动填写并完成验证，请稍候；如需手动操作，点击「点击验证」后登录即可。',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF8A6D3B)),
             ),
           ),
           Expanded(
@@ -167,6 +221,7 @@ class _WebLoginPageState extends State<WebLoginPage> {
               onLoadStop: (controller, url) async {
                 _controller = controller;
                 await _fillForm(url);
+                await _autoVerifyAndSubmit(url);
                 await _checkLogin();
               },
             ),

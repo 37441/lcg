@@ -4,6 +4,7 @@ import 'app.dart';
 import 'core/account/account_manager.dart';
 import 'core/account/user_data_repo.dart';
 import 'core/config/app_config.dart';
+import 'core/config/theme_controller.dart';
 import 'core/network/api_client.dart';
 import 'data/repository/sign_in_service.dart';
 
@@ -12,6 +13,7 @@ Future<void> main() async {
   await ApiClient.instance.init();
   await AppConfig.init();
   await UserDataRepo.init();
+  await ThemeController.init();
   _autoSignInIfNeeded();
   runApp(const LcgApp());
 }

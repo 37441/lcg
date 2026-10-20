@@ -19,6 +19,7 @@ class FloatingNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(UiTokens.spaceM, 0, UiTokens.spaceM, 10),
       child: Container(
@@ -46,7 +47,7 @@ class FloatingNavBar extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
                         color: currentIndex == i
-                            ? UiTokens.mintGreenLight
+                            ? scheme.primaryContainer
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -57,7 +58,7 @@ class FloatingNavBar extends StatelessWidget {
                             currentIndex == i ? _items[i].$2 : _items[i].$1,
                             size: 20,
                             color: currentIndex == i
-                                ? UiTokens.mintGreen
+                                ? scheme.primary
                                 : UiTokens.tabUnselected,
                           ),
                           const SizedBox(height: 2),
@@ -69,7 +70,7 @@ class FloatingNavBar extends StatelessWidget {
                                   ? FontWeight.w600
                                   : FontWeight.normal,
                               color: currentIndex == i
-                                  ? UiTokens.mintGreen
+                                  ? scheme.primary
                                   : UiTokens.tabUnselected,
                             ),
                           ),

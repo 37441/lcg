@@ -1,35 +1,39 @@
 import 'package:flutter/material.dart';
 
+import '../core/config/theme_controller.dart';
 import 'ui_tokens.dart';
 
-/// App 主题：浅色 + 深色，全部取 UiTokens，组件通过主题引用
+/// App 主题：支持主题色预设 + 明暗模式
 class AppTheme {
   AppTheme._();
 
-  static ThemeData get light => _build(Brightness.light);
+  /// 默认预设（兼容旧调用）
+  static ThemeData get light => build(ThemeController.presets.first, Brightness.light);
 
-  static ThemeData get dark => _build(Brightness.dark);
+  static ThemeData get dark => build(ThemeController.presets.first, Brightness.dark);
 
-  static ThemeData _build(Brightness brightness) {
+  static ThemeData build(ThemePreset preset, Brightness brightness) {
     final isDark = brightness == Brightness.dark;
+    final primary = preset.primary;
+    final primaryContainer = isDark
+        ? Color.alphaBlend(primary.withValues(alpha: 0.3), const Color(0xFF1E1E1E))
+        : preset.container;
+    final onPrimaryContainer = isDark ? preset.container : preset.primary;
+
     final colorScheme = ColorScheme(
       brightness: brightness,
-      primary: UiTokens.primary,
+      primary: primary,
       onPrimary: UiTokens.onPrimary,
-      primaryContainer: isDark ? UiTokens.primaryContainerDark : UiTokens.primaryContainer,
-      onPrimaryContainer:
-          isDark ? UiTokens.onPrimaryContainerDark : UiTokens.onPrimaryContainer,
-      secondary: UiTokens.primary,
+      primaryContainer: primaryContainer,
+      onPrimaryContainer: onPrimaryContainer,
+      secondary: primary,
       onSecondary: UiTokens.onPrimary,
-      secondaryContainer:
-          isDark ? UiTokens.primaryContainerDark : UiTokens.primaryContainer,
-      onSecondaryContainer:
-          isDark ? UiTokens.onPrimaryContainerDark : UiTokens.onPrimaryContainer,
+      secondaryContainer: primaryContainer,
+      onSecondaryContainer: onPrimaryContainer,
       error: UiTokens.error,
       onError: UiTokens.onPrimary,
       surface: isDark ? UiTokens.surfaceDark : UiTokens.surface,
-      onSurface:
-          isDark ? UiTokens.textPrimaryDark : UiTokens.textPrimary,
+      onSurface: isDark ? UiTokens.textPrimaryDark : UiTokens.textPrimary,
       surfaceContainerHighest:
           isDark ? UiTokens.surfaceVariantDark : UiTokens.surfaceVariant,
       onSurfaceVariant:
@@ -39,7 +43,7 @@ class AppTheme {
       scrim: UiTokens.scrim,
     );
 
-    final base = ThemeData(
+    return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
@@ -64,12 +68,11 @@ class AppTheme {
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        selectedItemColor: UiTokens.mintGreen,
+        selectedItemColor: primary,
         unselectedItemColor: UiTokens.tabUnselected,
         selectedLabelStyle:
             const TextStyle(fontSize: UiTokens.fontTag, fontWeight: FontWeight.w500),
-        unselectedLabelStyle:
-            const TextStyle(fontSize: UiTokens.fontTag),
+        unselectedLabelStyle: const TextStyle(fontSize: UiTokens.fontTag),
       ),
       cardTheme: CardThemeData(
         color: isDark ? UiTokens.surfaceDark : Colors.white,
@@ -111,6 +114,5 @@ class AppTheme {
         ),
       ),
     );
-    return base;
   }
 }
