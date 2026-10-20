@@ -50,13 +50,25 @@ class _ArticleListViewState extends State<ArticleListView> {
     }
   }
 
+  /// 按 query 类型构造分页 URL：
+  /// - forum-2-1.html（版块页，页码在文件名）→ forum-2-N.html
+  /// - forum.php?mod=guide&view=hot（导读页）→ &page=N
+  String _pageQuery(int page) {
+    final q = widget.query;
+    final m = RegExp(r'^(.*-)(\d+)(\.html)$').firstMatch(q);
+    if (m != null) {
+      return '${m.group(1)}$page${m.group(3)}';
+    }
+    return '$q&page=$page';
+  }
+
   Future<void> _fetch() async {
     setState(() {
       _loading = true;
       _error = false;
     });
     try {
-      final page = await _repo.fetchForumPage('${widget.query}&page=$_page');
+      final page = await _repo.fetchForumPage(_pageQuery(_page));
       setState(() {
         _items.addAll(page.articles);
         _hasMore = page.articles.isNotEmpty;
@@ -96,7 +108,7 @@ class _ArticleListViewState extends State<ArticleListView> {
     _loadingMore = true;
     _page++;
     try {
-      final page = await _repo.fetchForumPage('${widget.query}&page=$_page');
+      final page = await _repo.fetchForumPage(_pageQuery(_page));
       setState(() {
         _items.addAll(page.articles);
         _hasMore = page.articles.isNotEmpty;
