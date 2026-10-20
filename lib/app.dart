@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'core/account/account_manager.dart';
 import 'core/config/theme_controller.dart';
+import 'core/network/waf_interceptor.dart';
 import 'pages/article/article_page.dart';
 import 'pages/splash/splash_page.dart';
 import 'theme/app_theme.dart';
@@ -22,6 +23,7 @@ class LcgApp extends StatelessWidget {
         builder: (context, tc, _) => MaterialApp(
           title: '吾爱破解',
           debugShowCheckedModeBanner: false,
+          navigatorKey: WafNavigator.key,
           theme: AppTheme.build(tc.preset, Brightness.light),
           darkTheme: AppTheme.build(tc.preset, Brightness.dark),
           themeMode: tc.mode,

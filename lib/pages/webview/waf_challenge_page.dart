@@ -8,14 +8,14 @@ import '../../core/config/website_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/cookie_store.dart';
 
-/// 阿里云 WAF JS 挑战穿透页
-/// WebView 加载目标页自动执行挑战脚本，通过后同步全部 Cookie 并返回 true
+/// 阿里云 WAF JS 挑战执行页（参考 MT 客户端已验证方案）
+/// 全屏加载论坛首页让 WebView 跑完混淆 JS，页面变为真实内容后收割 cookie 并自动关闭。
 class WafChallengePage extends StatefulWidget {
   const WafChallengePage({super.key, required this.url});
 
   final String url;
 
-  /// 打开挑战页，返回是否通过验证
+  /// 打开挑战页，返回是否通过验证（通过时会同步 cookie 到原生请求池）
   static Future<bool> ensure(BuildContext context, String url) async {
     final ok = await Navigator.push<bool>(
       context,
@@ -29,99 +29,121 @@ class WafChallengePage extends StatefulWidget {
 }
 
 class _WafChallengePageState extends State<WafChallengePage> {
-  InAppWebViewController? _controller;
-  var _done = false;
-  Timer? _timer;
+  var _finished = false;
   Timer? _timeout;
 
-  static const _jsState = '''
-(function(){
-  try {
-    if (!document.body) return 'WAIT';
-    var t = document.body.innerText || '';
-    if (!t.trim()) return 'WAIT';
-    return t.indexOf('Please enable JavaScript') >= 0 ? 'WAF' : 'OK';
-  } catch(e) { return 'WAIT'; }
-})();
-''';
+  static bool isWafChallenge(String text) =>
+      text.contains('Please enable JavaScript');
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _check());
-    _timeout = Timer(const Duration(seconds: 25), () {
-      if (mounted && !_done) Navigator.of(context).pop(false);
-    });
+    // 兜底超时
+    _timeout = Timer(const Duration(seconds: 30), () => _finish(false));
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _timeout?.cancel();
     super.dispose();
   }
 
-  Future<void> _check() async {
-    final controller = _controller;
-    if (controller == null || _done) return;
+  Future<void> _onLoadStop(InAppWebViewController controller) async {
+    if (_finished) return;
+    // 给混淆 JS 留执行时间；执行完页面会刷新为真实内容
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    if (_finished || !mounted) return;
     try {
-      final r = await controller.evaluateJavascript(source: _jsState);
-      if ((r?.toString() ?? '') != 'OK') return;
-      // 挑战已通过：同步全部 Cookie 到原生池
+      final html = await controller.evaluateJavascript(
+        source: 'document.documentElement.innerHTML',
+      );
+      if (html is String && isWafChallenge(html)) {
+        return; // 仍在挑战页，等待下一次加载
+      }
+    } catch (_) {}
+    await _collectCookies();
+    _finish(true);
+  }
+
+  /// 收割 WebView 的 cookie（含 WAF 验证 cookie）写回原生请求池
+  Future<void> _collectCookies() async {
+    try {
       final cookies = await CookieManager.instance()
           .getCookies(url: WebUri(WebsiteConstants.serverBaseUrl));
       final jarCookies = <Cookie>[];
       for (final c in cookies) {
+        final name = c.name.trim();
+        final value = c.value;
+        if (name.isEmpty || value.isEmpty) continue;
         try {
-          jarCookies.add(Cookie(c.name, c.value)
-            ..domain = (c.domain?.isNotEmpty == true) ? c.domain! : 'www.52pojie.cn'
-            ..path = (c.path?.isNotEmpty == true) ? c.path! : '/');
+          // 不设 domain，由 saveFromResponse 的 Uri 归属，避免域匹配问题
+          jarCookies.add(Cookie(name, value)
+            ..path = (c.path == null || c.path!.isEmpty) ? '/' : c.path!);
         } catch (_) {}
       }
       if (jarCookies.isNotEmpty) {
-        try {
-          await CookieStore.jar.saveFromResponse(
-            Uri.parse(WebsiteConstants.serverBaseUrl),
-            jarCookies,
-          );
-        } catch (_) {}
+        await CookieStore.jar.saveFromResponse(
+          Uri.parse(WebsiteConstants.serverBaseUrl),
+          jarCookies,
+        );
       }
-      try {
-        final header = cookies.map((c) => '${c.name}=${c.value}').join('; ');
-        if (header.isNotEmpty) await CookieStore.setWebCookieHeader(header);
-      } catch (_) {}
-      _done = true;
-      if (mounted) Navigator.of(context).pop(true);
+      final header = cookies
+          .where((c) => c.name.isNotEmpty)
+          .map((c) => '${c.name}=${c.value}')
+          .join('; ');
+      if (header.isNotEmpty) await CookieStore.setWebCookieHeader(header);
     } catch (_) {}
+  }
+
+  void _finish(bool ok) {
+    if (_finished) return;
+    _finished = true;
+    if (mounted) Navigator.of(context).pop(ok);
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('安全验证')),
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            color: const Color(0xFFFFF7E6),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: const Text(
-              '正在通过站点安全验证，请稍候（自动完成，无需操作）…',
-              style: TextStyle(fontSize: 12, color: Color(0xFF8A6D3B)),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: InAppWebView(
+                initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+                initialSettings:
+                    InAppWebViewSettings(userAgent: ApiClient.userAgent),
+                onLoadStop: (controller, _) => _onLoadStop(controller),
+              ),
             ),
-          ),
-          Expanded(
-            child: InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-              initialSettings: InAppWebViewSettings(userAgent: ApiClient.userAgent),
-              onWebViewCreated: (controller) => _controller = controller,
-              onLoadStop: (controller, url) async {
-                _controller = controller;
-                await _check();
-              },
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+                color: scheme.surface,
+                child: Row(
+                  children: [
+                    Icon(Icons.verified_user_outlined, size: 20, color: scheme.primary),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        '正在完成论坛安全验证…',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '关闭',
+                      onPressed: () => _finish(false),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

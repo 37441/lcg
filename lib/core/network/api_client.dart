@@ -9,6 +9,7 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:path_provider/path_provider.dart';
 
 import 'cookie_store.dart';
+import 'waf_interceptor.dart';
 import '../config/website_constants.dart';
 
 /// 网络异常（对应原生 NetworkException）
@@ -87,6 +88,11 @@ class ApiClient {
         }
         handler.next(options);
       },
+    ));
+    // WAF JS 挑战自动穿透（命中挑战页时弹验证页并自动重发）
+    _dio.interceptors.add(WafDioInterceptor(
+      baseUrl: WebsiteConstants.serverBaseUrl,
+      dio: _dio,
     ));
   }
 
