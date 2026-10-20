@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../core/network/api_client.dart';
+import '../core/network/waf_silent_solver.dart';
 import '../data/models/article.dart';
 import '../data/repository/articles_repository.dart';
 import '../pages/settings/diagnostics_page.dart';
-import '../pages/webview/waf_challenge_page.dart';
 import 'article_card.dart';
 import 'common_views.dart';
 
@@ -86,7 +86,7 @@ class _ArticleListViewState extends State<ArticleListView> {
     }
   }
 
-  /// 命中 WAF 挑战：用 WebView 穿透后重试（仅自动一次，避免循环）
+  /// 命中 WAF 挑战：后台静默验证后重试（仅自动一次，避免循环）
   Future<void> _solveWaf(String url, Future<void> Function() retry) async {
     if (!mounted) return;
     if (_wafTried) {
@@ -94,7 +94,7 @@ class _ArticleListViewState extends State<ArticleListView> {
       return;
     }
     _wafTried = true;
-    final ok = await WafChallengePage.ensure(context, url);
+    final ok = await WafSilentSolver.solve(context, url);
     if (!mounted) return;
     if (ok) {
       await retry();

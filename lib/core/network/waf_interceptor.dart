@@ -6,7 +6,7 @@ import 'package:fast_gbk/fast_gbk.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/utils/app_log.dart';
-import '../../pages/webview/waf_challenge_page.dart';
+import 'waf_silent_solver.dart';
 
 /// 全局 Navigator key：WAF 拦截器需要用它在任意请求命中挑战时弹出验证页
 class WafNavigator {
@@ -18,7 +18,7 @@ class WafNavigator {
 ///
 /// 52pojie 对请求返回 `Please enable JavaScript` 混淆挑战页；
 /// 该页需浏览器内核执行 JS 才能通过。拦截器检测到挑战后：
-/// 1. 弹出 WafChallengePage（WebView 加载论坛首页自动完成验证）
+/// 1. 由 WafSilentSolver 用 1×1 后台 WebView 静默完成验证（无任何可见界面）
 /// 2. 收割 WebView cookie 写回 dio 的 CookieJar
 /// 3. 自动重发原请求，响应交给原调用方
 /// 挑战只需通过一次，之后全部直通。
@@ -99,8 +99,8 @@ class WafDioInterceptor extends InterceptorsWrapper {
     if (context == null) {
       throw StateError('页面尚未就绪，无法执行安全验证');
     }
-    final ok = await WafChallengePage.ensure(context, '${baseUrl}forum.php');
-    logD('waf', 'WebView 验证结果: $ok');
+    final ok = await WafSilentSolver.solve(context, '${baseUrl}forum.php');
+    logD('waf', '静默验证结果: $ok');
     if (!ok) {
       throw StateError('安全验证未通过');
     }

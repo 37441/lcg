@@ -54,9 +54,7 @@ class ApiClient {
 
   static const _timeout = Duration(seconds: 15);
   /// 统一桌面 UA：原生请求与 WebView（WAF/登录）必须一致，否则 WAF 验证 cookie 不认
-  static const userAgent =
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-      '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  static const userAgent = WebsiteConstants.desktopUserAgent;
 
   late final Dio _dio;
   String? formHash;

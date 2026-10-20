@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 
 import '../../core/account/account_manager.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/waf_silent_solver.dart';
 import '../../core/utils/toast.dart';
 import '../../data/models/article.dart';
 import '../../data/repository/articles_repository.dart';
 import '../../theme/ui_tokens.dart';
 import '../../widgets/common_views.dart';
-import '../webview/waf_challenge_page.dart';
 
 /// 帖子详情页：滚动自动拼接下一页 + 底部回复栏
 class ArticlePage extends StatefulWidget {
@@ -83,7 +83,7 @@ class _ArticlePageState extends State<ArticlePage> {
         return;
       }
       _wafTried = true;
-      final ok = await WafChallengePage.ensure(context, e.url);
+      final ok = await WafSilentSolver.solve(context, e.url);
       if (!mounted) return;
       if (ok) {
         await _load();
